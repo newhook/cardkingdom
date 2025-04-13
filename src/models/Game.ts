@@ -17,6 +17,9 @@ export interface BattleResult {
   battleLog: string[];
 }
 
+// Add a callback type for UI updates
+export type GameUpdateCallback = () => void;
+
 export class Game {
   players: Player[];
   deck: Deck;
@@ -30,6 +33,7 @@ export class Game {
   draftingOrder: number[]; // Track the order of players for drafting
   draftingPlayerIndex: number; // Index within draftingOrder array
   isComputerDrafting: boolean; // Flag to control AI drafting behavior
+  updateCallback: GameUpdateCallback | null; // Callback to notify UI of updates
 
   constructor(playerNames: string[] = ["Player 1", "Player 2"]) {
     this.players = playerNames.map(
@@ -46,6 +50,19 @@ export class Game {
     this.battleLog = [];
     this.currentDraftPoints = 2; // Start with 2 drafting points on Turn 1
     this.isComputerDrafting = false; // Initialize AI drafting flag
+    this.updateCallback = null; // Initialize update callback
+  }
+
+  // Set a callback function that will be called when the game state changes
+  setUpdateCallback(callback: GameUpdateCallback): void {
+    this.updateCallback = callback;
+  }
+
+  // Notify the UI that the game state has changed
+  notifyUpdate(): void {
+    if (this.updateCallback) {
+      this.updateCallback();
+    }
   }
 
   // Initialize the game
@@ -57,30 +74,37 @@ export class Game {
     this.determineDraftingOrder();
     this.refillDraftPool();
 
-    // Start AI drafting if computer goes first
-    this.checkAndTriggerComputerDraft();
+    // Start AI drafting if computer goes first (with a slight delay)
+    if (this.getCurrentDraftingPlayer().id === "1") {
+      setTimeout(() => this.checkAndTriggerComputerDraft(), 1000);
+    }
   }
 
   // Check if it's the computer's turn to draft and trigger AI drafting
   checkAndTriggerComputerDraft(): void {
     if (this.currentPhase !== GamePhase.DRAFT) return;
+    if (this.isComputerDrafting) return;
 
     // Assume player 1 (index 0) is human and player 2 (index 1) is AI
     const currentDraftingPlayer = this.getCurrentDraftingPlayer();
     const isComputerTurn = currentDraftingPlayer.id === "1"; // Player with ID "1" is the computer
 
-    if (isComputerTurn && !this.isComputerDrafting) {
+    if (isComputerTurn) {
       this.isComputerDrafting = true;
-      // Use setTimeout to give a small delay before the computer makes its move
+      console.log("Computer is drafting now...");
+
+      // Make the computer's move with a slight delay to make it visible to the user
       setTimeout(() => {
         this.computerDraft();
         this.isComputerDrafting = false;
+        this.notifyUpdate(); // Update the UI after computer's move
       }, 1000);
     }
   }
 
   // Computer AI drafting logic
   computerDraft(): void {
+    console.log("Computer drafting started");
     // Continue drafting until out of points or no cards left
     while (this.currentDraftPoints >= 2 && this.draftPool.length > 0) {
       // Simple AI strategy: pick the highest strength card
@@ -96,8 +120,15 @@ export class Game {
         }
       }
 
+      console.log(
+        `Computer selecting card at index ${bestCardIndex} with strength ${bestCardStrength}`
+      );
+
       // Draft the selected card
       const success = this.draftCard(bestCardIndex);
+      console.log(
+        `Computer draft success: ${success}, remaining points: ${this.currentDraftPoints}`
+      );
 
       // If drafting failed or we're out of points, stop drafting
       if (!success || this.currentDraftPoints < 2) {
@@ -106,6 +137,7 @@ export class Game {
     }
 
     // Pass if no more cards can be drafted
+    console.log("Computer passing draft turn");
     this.passDraft();
   }
 
@@ -182,8 +214,11 @@ export class Game {
       }
     }
 
-    // Check if it's the computer's turn to draft
-    this.checkAndTriggerComputerDraft();
+    // Check if it's the computer's turn to draft (with a slight delay)
+    setTimeout(() => this.checkAndTriggerComputerDraft(), 500);
+
+    // Notify the UI that the game state has changed
+    this.notifyUpdate();
   }
 
   // Arrange battlefield cards for computer player
@@ -450,8 +485,11 @@ export class Game {
     this.determineDraftingOrder(); // Reset drafting order for the new round
     this.refillDraftPool();
 
-    // Check if computer drafts first in the new round
-    this.checkAndTriggerComputerDraft();
+    // Check if computer drafts first in the new round (with a slight delay)
+    setTimeout(() => this.checkAndTriggerComputerDraft(), 1000);
+
+    // Notify the UI that the game state has changed
+    this.notifyUpdate();
   }
 
   // Get the battle log

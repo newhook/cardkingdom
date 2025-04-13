@@ -83,6 +83,9 @@ export class GameView {
     this.container.appendChild(this.actionButtons);
     this.container.appendChild(this.logElement);
 
+    // Set up the game update callback to refresh the UI when the game state changes
+    this.game.setUpdateCallback(() => this.render());
+
     // Initialize the game
     this.game.initialize();
     this.render();
@@ -90,6 +93,7 @@ export class GameView {
 
   // Render the entire game state
   render(): void {
+    console.log("GameView rendering...");
     this.renderPlayerInfo();
     this.renderDraftPool();
     this.renderHands();
