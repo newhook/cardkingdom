@@ -29,6 +29,7 @@ export class Game {
   currentDraftPoints: number;
   draftingOrder: number[]; // Track the order of players for drafting
   draftingPlayerIndex: number; // Index within draftingOrder array
+  isComputerDrafting: boolean; // Flag to control AI drafting behavior
 
   constructor(playerNames: string[] = ["Player 1", "Player 2"]) {
     this.players = playerNames.map(
@@ -44,6 +45,7 @@ export class Game {
     this.roundNumber = 1;
     this.battleLog = [];
     this.currentDraftPoints = 2; // Start with 2 drafting points on Turn 1
+    this.isComputerDrafting = false; // Initialize AI drafting flag
   }
 
   // Initialize the game
@@ -54,6 +56,57 @@ export class Game {
     // Randomly determine who drafts first on the first turn
     this.determineDraftingOrder();
     this.refillDraftPool();
+
+    // Start AI drafting if computer goes first
+    this.checkAndTriggerComputerDraft();
+  }
+
+  // Check if it's the computer's turn to draft and trigger AI drafting
+  checkAndTriggerComputerDraft(): void {
+    if (this.currentPhase !== GamePhase.DRAFT) return;
+
+    // Assume player 1 (index 0) is human and player 2 (index 1) is AI
+    const currentDraftingPlayer = this.getCurrentDraftingPlayer();
+    const isComputerTurn = currentDraftingPlayer.id === "1"; // Player with ID "1" is the computer
+
+    if (isComputerTurn && !this.isComputerDrafting) {
+      this.isComputerDrafting = true;
+      // Use setTimeout to give a small delay before the computer makes its move
+      setTimeout(() => {
+        this.computerDraft();
+        this.isComputerDrafting = false;
+      }, 1000);
+    }
+  }
+
+  // Computer AI drafting logic
+  computerDraft(): void {
+    // Continue drafting until out of points or no cards left
+    while (this.currentDraftPoints >= 2 && this.draftPool.length > 0) {
+      // Simple AI strategy: pick the highest strength card
+      let bestCardIndex = 0;
+      let bestCardStrength = 0;
+
+      // Find the strongest card in the draft pool
+      for (let i = 0; i < this.draftPool.length; i++) {
+        const card = this.draftPool[i];
+        if (card.strength > bestCardStrength) {
+          bestCardStrength = card.strength;
+          bestCardIndex = i;
+        }
+      }
+
+      // Draft the selected card
+      const success = this.draftCard(bestCardIndex);
+
+      // If drafting failed or we're out of points, stop drafting
+      if (!success || this.currentDraftPoints < 2) {
+        break;
+      }
+    }
+
+    // Pass if no more cards can be drafted
+    this.passDraft();
   }
 
   // Determine drafting order based on player health
@@ -116,6 +169,7 @@ export class Game {
       // Check if draft phase should end
       if (this.shouldEndDraftPhase()) {
         this.currentPhase = GamePhase.ARRANGEMENT;
+        this.arrangeBattlefieldForComputer(); // Arrange cards for computer player
       } else {
         // Determine new drafting order based on player health
         this.determineDraftingOrder();
@@ -126,6 +180,21 @@ export class Game {
         // Increase drafting points by 1 each turn
         this.currentDraftPoints = 2 + (this.turnNumber - 1);
       }
+    }
+
+    // Check if it's the computer's turn to draft
+    this.checkAndTriggerComputerDraft();
+  }
+
+  // Arrange battlefield cards for computer player
+  arrangeBattlefieldForComputer(): void {
+    // Get computer player (id: "1")
+    const computerPlayer = this.players.find((player) => player.id === "1");
+    if (!computerPlayer) return;
+
+    // Move all cards from hand to battlefield
+    while (computerPlayer.hand.length > 0) {
+      computerPlayer.playCard(0, computerPlayer.battlefield.length);
     }
   }
 
@@ -380,6 +449,9 @@ export class Game {
     this.currentDraftPoints = 2; // Reset draft points for the new round to 2
     this.determineDraftingOrder(); // Reset drafting order for the new round
     this.refillDraftPool();
+
+    // Check if computer drafts first in the new round
+    this.checkAndTriggerComputerDraft();
   }
 
   // Get the battle log
