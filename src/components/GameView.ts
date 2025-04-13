@@ -116,9 +116,11 @@ export class GameView {
       info.appendChild(healthElement);
 
       // Check if this player is the one currently drafting
-      const isDraftingPlayer =
-        this.game.currentPhase === GamePhase.DRAFT &&
-        this.game.getCurrentDraftingPlayer().id === player.id;
+      let isDraftingPlayer = false;
+      if (this.game.currentPhase === GamePhase.DRAFT) {
+        const currentDraftingPlayer = this.game.getCurrentDraftingPlayer();
+        isDraftingPlayer = currentDraftingPlayer.id === player.id;
+      }
 
       // Add turn and draft points info if in draft phase and this is the current drafting player
       if (isDraftingPlayer) {
@@ -128,9 +130,9 @@ export class GameView {
         info.appendChild(draftInfo);
       }
 
-      // Highlight current player based on phase
+      // Highlight current player based on game phase
       if (this.game.currentPhase === GamePhase.DRAFT) {
-        // During draft, highlight the drafting player
+        // During draft, highlight the player whose turn it is to draft
         info.classList.toggle("active", isDraftingPlayer);
       } else {
         // In other phases, highlight based on currentPlayerIndex
@@ -157,7 +159,7 @@ export class GameView {
 
       // Get current drafting player's name
       const currentDraftingPlayer = this.game.getCurrentDraftingPlayer();
-      draftPointsInfo.innerHTML = `Turn ${this.game.turnNumber} - <b>${currentDraftingPlayer.name}'s Turn</b><br>Draft Points: ${this.game.currentDraftPoints}`;
+      draftPointsInfo.innerHTML = `Turn ${this.game.turnNumber} - <strong>${currentDraftingPlayer.name}'s Turn</strong><br>Draft Points: ${this.game.currentDraftPoints}`;
       this.draftPoolElement.appendChild(draftPointsInfo);
 
       // Add pass button
