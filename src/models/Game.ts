@@ -43,7 +43,7 @@ export class Game {
     this.turnNumber = 1;
     this.roundNumber = 1;
     this.battleLog = [];
-    this.currentDraftPoints = 10; // Start with 10 drafting points on Turn 1
+    this.currentDraftPoints = 2; // Start with 2 drafting points on Turn 1
   }
 
   // Initialize the game
@@ -123,8 +123,8 @@ export class Game {
         // Refill draft pool and set new draft points
         this.refillDraftPool();
 
-        // Increase drafting points by 2 each turn
-        this.currentDraftPoints = 10 + (this.turnNumber - 1) * 2;
+        // Increase drafting points by 1 each turn
+        this.currentDraftPoints = 2 + (this.turnNumber - 1);
       }
     }
   }
@@ -146,9 +146,10 @@ export class Game {
     if (poolIndex < 0 || poolIndex >= this.draftPool.length) return false;
 
     const card = this.draftPool[poolIndex];
+    const cardCost = 2; // Every card costs 2 points
 
     // Check if player has enough drafting points
-    if (card.cost > this.currentDraftPoints) {
+    if (cardCost > this.currentDraftPoints) {
       return false; // Not enough points to draft this card
     }
 
@@ -160,10 +161,10 @@ export class Game {
     currentDraftingPlayer.addCardToHand(draftedCard);
 
     // Deduct the card's cost from drafting points
-    this.currentDraftPoints -= card.cost;
+    this.currentDraftPoints -= cardCost;
 
     // If no more draft points or draft pool is empty, move to next player
-    if (this.currentDraftPoints <= 0 || this.draftPool.length === 0) {
+    if (this.currentDraftPoints < 2 || this.draftPool.length === 0) {
       this.nextDraftingPlayer();
     }
 
@@ -376,7 +377,7 @@ export class Game {
     this.turnNumber = 1;
     this.currentPhase = GamePhase.DRAFT;
     this.currentPlayerIndex = 0;
-    this.currentDraftPoints = 10; // Reset draft points for the new round
+    this.currentDraftPoints = 2; // Reset draft points for the new round to 2
     this.determineDraftingOrder(); // Reset drafting order for the new round
     this.refillDraftPool();
   }

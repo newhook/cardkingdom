@@ -12,13 +12,10 @@ Players draft cards to create their "army" which then battles automatically agai
 
 ## Drafting Mechanics
 - Each turn is numbered (Turn 1, 2, 3, etc.)
-- Players receive drafting points each turn: starting with 10 points on Turn 1, increasing by 2 points each subsequent turn
-- Cards have different costs:
-  - Number cards 2-9: Cost 2 points
-  - 10s: Cost 3 points
-  - Jacks (J), Queens (Q): Cost 3 points
-  - Kings (K): Cost 4 points
-  - Aces (A), Jokers: Cost 5 points
+- First turn drafting starts with a random player
+- In subsequent turns, the player with the lowest health gets to go first
+- Players receive drafting points each turn: starting with 2 points on Turn 1, increasing by 1 point each subsequent turn
+- Every card costs 2 points to draft
 - Players spend their drafting points to acquire cards from the draft pool
 - Unused points do not carry over to the next turn
 

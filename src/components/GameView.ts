@@ -162,6 +162,21 @@ export class GameView {
       draftPointsInfo.innerHTML = `Turn ${this.game.turnNumber} - <strong>${currentDraftingPlayer.name}'s Turn</strong><br>Draft Points: ${this.game.currentDraftPoints}`;
       this.draftPoolElement.appendChild(draftPointsInfo);
 
+      // Add explanation for drafting order
+      if (this.game.turnNumber === 1) {
+        const draftOrderInfo = document.createElement("div");
+        draftOrderInfo.classList.add("draft-order-info");
+        draftOrderInfo.textContent =
+          "First turn: Random player starts drafting";
+        this.draftPoolElement.appendChild(draftOrderInfo);
+      } else {
+        const draftOrderInfo = document.createElement("div");
+        draftOrderInfo.classList.add("draft-order-info");
+        draftOrderInfo.textContent =
+          "Drafting order: Player with lowest health drafts first";
+        this.draftPoolElement.appendChild(draftOrderInfo);
+      }
+
       // Add pass button
       const passButton = document.createElement("button");
       passButton.textContent = "Pass";
