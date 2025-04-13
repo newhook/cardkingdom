@@ -174,6 +174,16 @@ h1 {
   text-align: center;
 }
 
+/* Drop zone styling */
+.drop-zone {
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+}
+
+.drop-zone.drag-over {
+  background-color: rgba(44, 130, 201, 0.2);
+  border: 2px dashed rgba(255, 255, 255, 0.6);
+}
+
 /* Hand */
 .hand {
   display: flex;
@@ -241,6 +251,21 @@ h1 {
 .card:hover {
   transform: translateY(-5px) scale(1.05);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Draggable card enhancements */
+.card.draggable {
+  cursor: grab;
+}
+
+.card.draggable:active {
+  cursor: grabbing;
+}
+
+.card.drop-target {
+  border: 2px solid #2c82c9;
+  box-shadow: 0 0 20px rgba(44, 130, 201, 0.6);
+  transform: translateY(-5px) scale(1.05);
 }
 
 .card.face-down {
@@ -366,6 +391,44 @@ h1 {
 .card.disabled:hover {
   transform: none;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Phase information */
+.phase-info {
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  margin-bottom: 10px;
+  width: 100%;
+  color: #ffcc00;
+  font-weight: bold;
+}
+
+/* Arrangement instructions */
+.arrangement-instructions {
+  background: rgba(44, 130, 201, 0.2);
+  padding: 8px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #ffffff;
+  width: 100%;
+  text-align: center;
+}
+
+/* Primary button style */
+.primary-button {
+  background: #2c82c9 !important;
+  font-weight: bold;
+  font-size: 1.1em !important;
+  padding: 12px 24px !important;
+}
+
+.primary-button:hover {
+  background: #3498db !important;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* Action Buttons */
