@@ -200,8 +200,13 @@ export class Game {
 
       // Check if draft phase should end
       if (this.shouldEndDraftPhase()) {
+        console.log(
+          `[Game.ts] Draft ended (Turn ${this.turnNumber}). Setting phase to ARRANGEMENT.`
+        );
         this.currentPhase = GamePhase.ARRANGEMENT;
         this.arrangeBattlefieldForComputer(); // Arrange cards for computer player
+        this.notifyUpdate(); // Make sure UI updates to show arrangement phase
+        return; // Stop here to ensure we don't trigger more drafting
       } else {
         // Determine new drafting order based on player health
         this.determineDraftingOrder();
@@ -378,10 +383,10 @@ export class Game {
     // Check if game is over
     if (this.checkGameOver()) {
       this.currentPhase = GamePhase.GAME_OVER;
-    } else {
-      // Set up for next round
-      this.prepareNextRound();
     }
+
+    // Notify the UI that the battle is complete and the phase is now DAMAGE or GAME_OVER
+    this.notifyUpdate();
   }
 
   // Check if all players still have cards on battlefield

@@ -496,6 +496,28 @@ h1 {
   background: #2a2a2a;
 }
 
+/* Game phase specific styling */
+.game-container[data-game-phase="ARRANGEMENT"] .battlefield {
+  background: rgba(44, 130, 201, 0.2);
+  border: 2px dashed #2c82c9;
+}
+
+.active-phase {
+  background-color: rgba(44, 130, 201, 0.5) !important;
+  color: white;
+  border-left: 4px solid #2c82c9;
+  font-size: 1.1em;
+}
+
+.main-instructions {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 15px;
+  margin: 10px 0;
+  border-radius: 8px;
+  line-height: 1.5;
+  text-align: left;
+}
+
 /* Responsive Adjustments */
 @media (max-width: 768px) {
   .card {

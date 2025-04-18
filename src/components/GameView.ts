@@ -93,13 +93,16 @@ export class GameView {
 
   // Render the entire game state
   render(): void {
-    console.log("GameView rendering...");
+    console.log(`[GameView.ts] Rendering for phase: ${this.game.currentPhase}`);
     this.renderPlayerInfo();
     this.renderDraftPool();
     this.renderHands();
     this.renderBattlefields();
     this.renderActionButtons();
     this.renderBattleLog();
+
+    // Highlight the current phase in the UI
+    this.container.dataset.gamePhase = this.game.currentPhase;
   }
 
   // Render player information (health, etc.)
@@ -412,6 +415,10 @@ export class GameView {
   private renderActionButtons(): void {
     this.actionButtons.innerHTML = "";
 
+    console.log(
+      "[GameView.ts] Rendering action buttons for phase: " + this.game.currentPhase
+    );
+
     switch (this.game.currentPhase) {
       case GamePhase.DRAFT:
         // Show phase info
@@ -422,12 +429,28 @@ export class GameView {
         break;
 
       case GamePhase.ARRANGEMENT:
-        // Show phase info
+        console.log(
+          "[GameView.ts] Rendering action buttons for ARRANGEMENT phase."
+        );
+        // Show phase info with more prominent styling
         const arrangementPhaseInfo = document.createElement("div");
-        arrangementPhaseInfo.classList.add("phase-info");
+        arrangementPhaseInfo.classList.add("phase-info", "active-phase");
         arrangementPhaseInfo.textContent =
           "Arrangement Phase: Position your cards for battle";
         this.actionButtons.appendChild(arrangementPhaseInfo);
+
+        // Add a more detailed instruction for the player
+        const arrangementInstructions = document.createElement("div");
+        arrangementInstructions.classList.add(
+          "arrangement-instructions",
+          "main-instructions"
+        );
+        arrangementInstructions.innerHTML = `
+          <strong>Placement Phase:</strong> Drag cards from your hand to the battlefield.<br>
+          The order matters - cards will attack in sequence from left to right.<br>
+          When you're satisfied with your arrangement, click "Ready for Battle".
+        `;
+        this.actionButtons.appendChild(arrangementInstructions);
 
         const readyButton = document.createElement("button");
         readyButton.textContent = "Ready for Battle";
