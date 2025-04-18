@@ -98,12 +98,6 @@ const Battlefield: React.FC<BattlefieldProps> = ({
       onDragLeave={handleDragLeaveContainer}
       onDrop={handleDropContainer}
     >
-      {isArrangementPhase && isHumanPlayer && (
-        <div className="arrangement-instructions">
-          Drag cards to reorder them. Click 'Ready for Battle' when finished.
-        </div>
-      )}
-
       <div className="cards-container">
         {player.battlefield.map((card, index) => (
           <CardComponent

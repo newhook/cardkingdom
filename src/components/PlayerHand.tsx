@@ -40,12 +40,6 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
 
   return (
     <div className={`hand ${isHumanPlayer ? 'human-hand' : 'opponent-hand'}`}>
-      {isArrangementPhase && isHumanPlayer && (
-        <div className="arrangement-instructions">
-          Drag cards to the battlefield or click to play them in order.
-        </div>
-      )}
-
       <div className="cards-container">
         {player.hand.map((card, index) => (
           <CardComponent

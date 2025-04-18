@@ -259,9 +259,27 @@ h1 {
   overflow: hidden;
 }
 
+/* --- Suit Colors --- */
+.card.suit-hearts .card-rank,
+.card.suit-hearts .card-suit,
+.card.suit-diamonds .card-rank,
+.card.suit-diamonds .card-suit {
+  color: #e74c3c; /* Red */
+}
+
+.card.suit-clubs .card-rank,
+.card.suit-clubs .card-suit,
+.card.suit-spades .card-rank,
+.card.suit-spades .card-suit {
+  color: #2c3e50; /* Black (or a dark grey) */
+}
+/* --- End Suit Colors --- */
+
 .card:hover {
   transform: translateY(-5px) scale(1.05);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4),
+              0 0 0 3px rgba(255, 215, 0, 0.7);
+  z-index: 10;
 }
 
 /* Draggable card enhancements */
