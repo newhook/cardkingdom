@@ -631,8 +631,30 @@ h1 {
 .section-divider {
   height: 2px;
   background-color: rgba(255, 255, 255, 0.2);
-  margin: 10px 0; /* Add some space above and below */
+  margin: 10px 0;
   border-radius: 1px;
+  transition: opacity 0.3s ease;
+}
+
+/* Container for divider and ready button */
+.divider-container {
+  position: relative; /* For potential absolute positioning inside if needed */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 50px; /* Ensure space for the button */
+  margin: 5px 0; /* Adjust vertical spacing */
+}
+
+/* Hide divider when button is present */
+.divider-container.has-button .section-divider {
+  opacity: 0;
+}
+
+/* Style the specific Ready for Battle button */
+.ready-battle-button {
+  /* position: absolute; Might not be needed with flex centering */
+  padding: 12px 30px !important; /* Make it prominent */
 }
 
 /* === Phase Banner Styling === */

@@ -10,16 +10,14 @@ import PhaseBanner from './PhaseBanner';
 // --- ActionButtons Component (defined inline) ---
 interface ActionButtonsProps {
   game: Game;
-  onStartBattle: () => void;
   onPrepareNextRound: () => void;
   onNewGame: () => void;
-  isDraftOverlayVisible: boolean; // Add prop
-  onShowOverlay: () => void; // Add prop
+  isDraftOverlayVisible: boolean;
+  onShowOverlay: () => void;
 }
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({
   game,
-  onStartBattle,
   onPrepareNextRound,
   onNewGame,
   isDraftOverlayVisible,
@@ -28,7 +26,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   const renderButtons = () => {
     switch (game.currentPhase) {
       case GamePhase.DRAFT:
-        // If overlay is hidden, show the button to bring it back
         if (!isDraftOverlayVisible) {
           return (
             <button className="primary-button" onClick={onShowOverlay}>
@@ -36,7 +33,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
             </button>
           );
         }
-        // Otherwise, show the standard draft phase info
         return (
           <div className="phase-info">
             Draft Phase: Acquire cards (Panel is Hidden)
@@ -44,22 +40,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         );
 
       case GamePhase.ARRANGEMENT:
-      // ... (rest of cases remain the same)
-        return (
-          <>
-            <div className="phase-info active-phase">
-              Arrangement Phase: Position your cards for battle
-            </div>
-            <div className="arrangement-instructions main-instructions">
-              <strong>Placement Phase:</strong> Drag cards from hand to battlefield.<br />
-              Order matters - cards attack left to right.<br />
-              Click "Ready for Battle" when done.
-            </div>
-            <button className="primary-button" onClick={onStartBattle}>
-              Ready for Battle
-            </button>
-          </>
-        );
+        return null;
 
       case GamePhase.DAMAGE:
         return (
@@ -281,13 +262,28 @@ function GameUI() {
       <PlayerInfo player={opponent} game={game} isOpponent={true} />
       <PlayerHand {...opponentPlayerProps} />
       <Battlefield {...opponentPlayerProps} />
-      <div className="section-divider"></div>
+
+      {/* === Divider / Ready Button Container === */} 
+      <div 
+        className={`divider-container ${game.currentPhase === GamePhase.ARRANGEMENT ? 'has-button' : ''}`}
+      >
+        <div className="section-divider"></div>
+        {game.currentPhase === GamePhase.ARRANGEMENT && (
+          <button 
+            className="primary-button ready-battle-button" 
+            onClick={handleStartBattle}
+          >
+            Ready for Battle
+          </button>
+        )}
+      </div>
+
+      {/* Player Battlefield */} 
       <Battlefield {...humanPlayerProps} />
       <PlayerHand {...humanPlayerProps} />
       <PlayerInfo player={player} game={game} isOpponent={false} />
       <ActionButtons
         game={game}
-        onStartBattle={handleStartBattle}
         onPrepareNextRound={handlePrepareNextRound}
         onNewGame={handleNewGame}
         isDraftOverlayVisible={isDraftOverlayVisible}
