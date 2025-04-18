@@ -27,6 +27,7 @@ export enum GamePhase {
   DRAFT = "draft",
   ARRANGEMENT = "arrangement",
   BATTLE = "battle",
+  POST_BATTLE = "post_battle",
   GAME_OVER = "game_over",
 }
 
@@ -171,9 +172,12 @@ export class Game {
       }
     }
 
-    // AI passes its turn if it didn't draft or ran out of points/options
-    console.log(`${computerPlayer.name} (AI) passing draft phase.`);
-    this.passDraft(); // Pass to lock the AI out and trigger next player check
+    // --- CHANGE: Instead of forcing a pass, just switch to the next eligible player --- 
+    // The AI might still have points but chose not to draft, or ran out.
+    // Let switchToNextEligibleDrafter handle the turn logic correctly.
+    console.log(`${computerPlayer.name} (AI) finished drafting actions. Checking next player.`);
+    // this.passDraft(); // REMOVED: Don't force pass here
+    this.switchToNextEligibleDrafter(); // ADDED: Directly check for the next player
   }
 
   // Determine drafting order based on player health
@@ -502,17 +506,17 @@ export class Game {
     // Battle phase logic is complete
     console.log("--- Battle Sequence Finished ---");
 
-    // Check for game over immediately
+    // Check for game over first
     if (this.checkGameOver()) {
       console.log("Game Over detected.");
       this.currentPhase = GamePhase.GAME_OVER;
-      this.notifyUpdate(); // Update UI to show game over state
     } else {
-      // If not game over, immediately prepare the next round (Draft Phase)
-      console.log("Battle finished, preparing next round.");
-      // Small delay to allow final animations/state updates to show before phase change
-      setTimeout(() => this.prepareNextRound(), 500); 
+      // Transition to the post-battle pause phase
+      console.log("Battle finished, entering Post-Battle phase.");
+      this.currentPhase = GamePhase.POST_BATTLE;
+      // prepareNextRound will be called by UI action later
     }
+    this.notifyUpdate(); // Update UI to show post-battle/game-over state
   }
 
   // Check if all players still have cards on battlefield

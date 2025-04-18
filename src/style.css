@@ -259,6 +259,23 @@ h1 {
   overflow: hidden;
 }
 
+.card-health {
+  position: absolute;
+  bottom: 5px;
+  left: 8px;
+  /* background-color: #333; */ /* REMOVE or comment out this line */
+  color: white;
+  font-size: 0.7em;  /* Further reduced font size - adjust if needed */
+  padding: 3px 8px;
+  border-radius: 9999px; /* Pill shape */
+  font-weight: bold;
+  white-space: nowrap;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Add text shadow for contrast */
+  transition: background-color 0.3s ease; /* Smooth color transition */
+}
+
 /* --- Suit Colors --- */
 .card.suit-hearts .card-rank,
 .card.suit-hearts .card-suit,
@@ -425,17 +442,19 @@ h1 {
 /* Sell Button on Card */
 .sell-button {
   position: absolute;
-  bottom: 5px;
-  right: 5px;
-  padding: 2px 6px;
-  font-size: 10px;
-  background-color: #e74c3c; /* Red */
+  top: 5px;        /* Position from the top edge */
+  right: 5px;       /* Position from the right edge */
+  background-color: rgba(220, 50, 50, 0.8); /* Reddish background */
   color: white;
   border: none;
-  border-radius: 3px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.7em;  /* Small font */
+  font-weight: bold;
   cursor: pointer;
-  opacity: 0.8;
-  transition: opacity 0.2s, background-color 0.2s;
+  z-index: 5;       /* Ensure it's above rank/suit but below maybe other overlays */
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
 }
 
 .sell-button:hover {
@@ -525,6 +544,51 @@ h1 {
 .battle-log h3 {
   margin-top: 0;
   text-align: center;
+}
+
+.battle-log-overlay {
+  /* --- Core Overlay Styles --- */
+  position: fixed; /* Take it out of normal flow, relative to viewport */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000; /* Make sure it's on top */
+
+  /* --- Centering Styles --- */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  /* --- Background --- */
+  background-color: rgba(0, 0, 0, 0.75); /* Dark semi-transparent backdrop */
+  padding: 20px; /* Add padding around the content box */
+}
+
+.battle-log-overlay-content {
+  /* --- Content Box Styles --- */
+  background-color: #222; /* Or match your draft modal background */
+  padding: 20px 30px; /* Adjust padding */
+  border-radius: 8px;
+  max-width: 600px; /* Limit width */
+  width: 90%; /* Responsive width */
+  max-height: 80vh; /* Limit height relative to viewport */
+  overflow-y: auto; /* Scroll if content overflows */
+  color: #eee; /* Text color */
+  border: 1px solid #444;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5); /* Optional shadow */
+}
+
+.battle-log-overlay-content h2 {
+  margin-top: 0;
+  text-align: center;
+  color: #fff; /* Or match title color */
+  margin-bottom: 15px;
+}
+
+/* Ensure BattleLog component fits well */
+.battle-log-overlay .battle-log {
+  width: 100%;
 }
 
 .log-entries {

@@ -60,5 +60,6 @@ After all cards have attacked the battle phase is over.
 3. **Battle Phase**:
     - Cards fight automatically based on the Battle Mechanics.
     - After all card attacks are resolved, any accumulated direct damage is applied to players.
-    - Check for game over condition.
-4. Repeat **Draft Phase** (if game not over) until one player is eliminated.
+    - Check for game over condition. (If game over, proceed to step 5).
+4. **Post-Battle Step**: Display results. Player clicks "Continue" to proceed.
+5. Repeat **Draft Phase** (if game not over) until one player is eliminated (Game Over).

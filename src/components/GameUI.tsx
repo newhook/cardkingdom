@@ -40,6 +40,9 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       case GamePhase.ARRANGEMENT:
         return null;
 
+      case GamePhase.POST_BATTLE:
+        return null;
+
       case GamePhase.GAME_OVER:
         const winner = game.getWinner();
         return (
@@ -80,6 +83,10 @@ function GameUI() {
   const animationTimeoutRef = useRef<number | null>(null);
   // --- End Animation State ---
 
+  // --- State for Battle Log Overlay ---
+  const [showBattleLogOverlay, setShowBattleLogOverlay] = useState(false);
+  // --- End Battle Log Overlay State ---
+
   // Callback to force component update when game state changes
   const forceUpdate = useCallback(() => {
     setGameVersion((v) => v + 1);
@@ -114,10 +121,10 @@ function GameUI() {
       GamePhase.DRAFT,
       GamePhase.ARRANGEMENT,
       GamePhase.BATTLE,
-      GamePhase.DAMAGE,
       GamePhase.GAME_OVER,
     ];
 
+    // Show phase banner for specific phases
     if (phasesToAnnounce.includes(game.currentPhase)) {
       console.log(`[GameUI] Phase changed to: ${game.currentPhase}, showing banner.`);
       setBannerPhase(game.currentPhase);
@@ -134,6 +141,18 @@ function GameUI() {
         setShowBanner(false);
         bannerTimeoutRef.current = null;
       }, 2500); // Show banner for 2.5 seconds
+    }
+
+    // Show Battle Log Overlay specifically for POST_BATTLE
+    if (game.currentPhase === GamePhase.POST_BATTLE) {
+      console.log("[GameUI] Phase changed to POST_BATTLE, showing Battle Log Overlay.");
+      setShowBattleLogOverlay(true);
+    } else {
+      // Hide overlay when transitioning *away* from POST_BATTLE (e.g., game over)
+      if (showBattleLogOverlay) { // Only log/set if it was previously true
+        console.log(`[GameUI] Phase changed to ${game.currentPhase}, hiding Battle Log Overlay.`);
+        setShowBattleLogOverlay(false);
+      }
     }
 
     // Cleanup timeout on component unmount or phase change before timer fires
@@ -299,16 +318,19 @@ function GameUI() {
   }, [game, forceUpdate]);
 
   const handlePrepareNextRound = useCallback(() => {
-    // Note: Called programmatically by Game.ts after battle ends
-    if (!game) return; // Basic check
+    if (!game || game.currentPhase !== GamePhase.POST_BATTLE) {
+      console.warn("Attempted to prepare next round in incorrect phase or game is null:", game?.currentPhase);
+      return;
+    }
+    console.log("GameUI: Preparing next round (hiding overlay)..."); // Log added here
+    setShowBattleLogOverlay(false); // Hide the log overlay
     game.prepareNextRound();
-    forceUpdate();
-  }, [game, forceUpdate]);
+  }, [game]);
 
   const handleNewGame = useCallback(() => {
-    initializeGame(); // Reuse the initialization logic
+    console.log("Starting new game...");
+    initializeGame();
   }, [initializeGame]);
-  // --- End Action Button Callbacks ---
 
   // --- Callbacks for Draft Overlay Toggle ---
   const handleHideDraftOverlay = useCallback(() => {
@@ -339,6 +361,18 @@ function GameUI() {
   );
   // --- End Sell Card Callback ---
 
+  // Add a log to see when the overlay component itself renders
+  useEffect(() => {
+    console.log('[GameUI] showBattleLogOverlay state is currently:', showBattleLogOverlay);
+  }, [showBattleLogOverlay]);
+
+  // --- Add Callback for Dismissing Battle Log --- 
+  const handleDismissBattleLog = useCallback(() => {
+    console.log("[GameUI] Dismissing Battle Log Overlay manually.");
+    setShowBattleLogOverlay(false);
+  }, []);
+  // --- End Dismiss Callback ---
+
   // Render loading state or the main game UI
   if (!game) {
     return <div>Loading Game...</div>;
@@ -365,6 +399,29 @@ function GameUI() {
     onSellCard: () => {}, // No selling for opponent
   };
 
+  const renderDividerContent = () => {
+    switch (game.currentPhase) {
+      case GamePhase.ARRANGEMENT:
+        return (
+          <div className="phase-info">
+            Arrange your lanes!
+          </div>
+        );
+      case GamePhase.BATTLE:
+        return <div className="phase-info">Battle in Progress...</div>;
+      case GamePhase.POST_BATTLE:
+        return (
+            <button className="primary-button" onClick={handlePrepareNextRound}>
+              Continue
+            </button>
+        );
+      case GamePhase.DRAFT:
+      case GamePhase.GAME_OVER:
+      default:
+        return null; // No specific content for these phases in the divider
+    }
+  };
+
   return (
     <div className={`game-container game-phase-${game.currentPhase} ${isAnimatingBattle ? 'animating-battle' : ''}`}>
       <PhaseBanner phase={bannerPhase} isVisible={showBanner} />
@@ -387,12 +444,17 @@ function GameUI() {
       />
 
       {/* Divider / Ready Button Container */}
-      <div className={`divider-container ${game.currentPhase === GamePhase.ARRANGEMENT ? 'has-button' : ''}`}>
+      <div className={`divider-container ${game.currentPhase === GamePhase.ARRANGEMENT || game.currentPhase === GamePhase.POST_BATTLE ? 'has-button' : ''}`}>
         <div className="section-divider"></div>
         {game.currentPhase === GamePhase.ARRANGEMENT && (
           <button className="primary-button ready-battle-button" onClick={handleStartBattle}>
             Ready for Battle
           </button>
+        )}
+        {game.currentPhase === GamePhase.POST_BATTLE && (
+            <button className="primary-button continue-button" onClick={handlePrepareNextRound}>
+              Continue
+            </button>
         )}
       </div>
 
@@ -419,8 +481,8 @@ function GameUI() {
         isDraftOverlayVisible={isDraftOverlayVisible}
         onShowOverlay={handleShowDraftOverlay}
       />
-      {/* Battle Log */}
-      <BattleLog log={game.getBattleLog().map(event => event.message || `Event: ${event.type}`)} />
+      {/* REMOVED Battle Log from here */}
+      {/* <BattleLog log={game.getBattleLog().map(event => event.message || `Event: ${event.type}`)} /> */}
 
       {/* Draft Pool Overlay */}
       {game.currentPhase === GamePhase.DRAFT && isDraftOverlayVisible && (
@@ -433,6 +495,30 @@ function GameUI() {
           />
         </div>
       )}
+
+      {/* ADDED: Battle Log Overlay - Render conditionally */} 
+      {showBattleLogOverlay && (
+        <div className="battle-log-overlay">
+          <div className="battle-log-overlay-content">
+            {/* ADDED: Close button for the overlay */}
+            <button 
+              className="close-overlay-button" 
+              onClick={handleDismissBattleLog}
+              aria-label="Close Battle Log"
+            >
+              &times; {/* Creates a visual 'X' */}
+            </button>
+            <h2>Battle Results</h2>
+            <BattleLog log={game.getBattleLog().map(event => event.message || `Event: ${event.type}`)} />
+            {/* The existing central "Continue" button will dismiss this AND advance the game */}
+          </div>
+        </div>
+      )}
+
+      {/* REMOVED: Lower divider container as content moved */}
+      {/* <div className="divider-container">
+          {renderDividerContent()}
+      </div> */}
     </div>
   );
 }
