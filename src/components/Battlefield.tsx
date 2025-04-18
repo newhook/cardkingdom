@@ -98,8 +98,6 @@ const Battlefield: React.FC<BattlefieldProps> = ({
       onDragLeave={handleDragLeaveContainer}
       onDrop={handleDropContainer}
     >
-      <h3>{isHumanPlayer ? "Your Battlefield" : "Opponent Battlefield"}</h3>
-
       {isArrangementPhase && isHumanPlayer && (
         <div className="arrangement-instructions">
           Drag cards to reorder them. Click 'Ready for Battle' when finished.

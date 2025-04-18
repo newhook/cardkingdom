@@ -40,8 +40,6 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
 
   return (
     <div className={`hand ${isHumanPlayer ? 'human-hand' : 'opponent-hand'}`}>
-      <h3>{isHumanPlayer ? "Your Hand" : "Opponent Hand"}</h3>
-
       {isArrangementPhase && isHumanPlayer && (
         <div className="arrangement-instructions">
           Drag cards to the battlefield or click to play them in order.

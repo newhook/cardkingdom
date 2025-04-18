@@ -238,6 +238,9 @@ function GameUI() {
       {/* Opponent Battlefield */} 
       <Battlefield {...opponentPlayerProps} />
 
+      {/* === Divider === */} 
+      <div className="section-divider"></div>
+
       {/* Player Battlefield */} 
       <Battlefield {...humanPlayerProps} />
 
