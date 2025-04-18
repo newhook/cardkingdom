@@ -2,6 +2,8 @@ import { Card } from "./Card";
 import { Deck } from "./Deck";
 import { Player } from "./Player";
 
+export { Player };
+
 export enum GamePhase {
   SETUP = "setup",
   DRAFT = "draft",
@@ -54,7 +56,7 @@ export class Game {
   }
 
   // Set a callback function that will be called when the game state changes
-  setUpdateCallback(callback: GameUpdateCallback): void {
+  setUpdateCallback(callback: GameUpdateCallback | null): void {
     this.updateCallback = callback;
   }
 
