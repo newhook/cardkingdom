@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Game, GamePhase, Player } from '../models/Game';
 import PlayerInfo from './PlayerInfo';
 import PlayerHand from './PlayerHand';
 import Battlefield from './Battlefield';
 import DraftPool from './DraftPool';
 import BattleLog from './BattleLog';
+import PhaseBanner from './PhaseBanner';
 
 // --- ActionButtons Component (defined inline) ---
 interface ActionButtonsProps {
@@ -100,6 +101,12 @@ function GameUI() {
   const [gameVersion, setGameVersion] = useState(0);
   const [isDraftOverlayVisible, setIsDraftOverlayVisible] = useState(true); // State for overlay visibility
 
+  // --- State for Phase Banner ---
+  const [bannerPhase, setBannerPhase] = useState<GamePhase | null>(null);
+  const [showBanner, setShowBanner] = useState(false);
+  const bannerTimeoutRef = useRef<number | null>(null); // Use number for browser timeout ID
+  // --- End Banner State ---
+
   // Callback to force component update when game state changes
   const forceUpdate = useCallback(() => {
     setGameVersion((v) => v + 1);
@@ -124,6 +131,46 @@ function GameUI() {
     };
     // Dependency array ensures this runs once on mount and if initializeGame changes (it shouldn't)
   }, [initializeGame]);
+
+  // --- Effect to handle banner display on phase change ---
+  useEffect(() => {
+    if (!game) return;
+
+    // Phases to announce with the banner
+    const phasesToAnnounce: GamePhase[] = [
+      GamePhase.DRAFT,
+      GamePhase.ARRANGEMENT,
+      GamePhase.BATTLE,
+      GamePhase.DAMAGE,
+      GamePhase.GAME_OVER,
+    ];
+
+    if (phasesToAnnounce.includes(game.currentPhase)) {
+      console.log(`[GameUI] Phase changed to: ${game.currentPhase}, showing banner.`);
+      setBannerPhase(game.currentPhase);
+      setShowBanner(true);
+
+      // Clear any existing timeout
+      if (bannerTimeoutRef.current) {
+        clearTimeout(bannerTimeoutRef.current);
+      }
+
+      // Set a timeout to hide the banner after a delay
+      bannerTimeoutRef.current = setTimeout(() => {
+        console.log("[GameUI] Hiding phase banner.");
+        setShowBanner(false);
+        bannerTimeoutRef.current = null;
+      }, 2500); // Show banner for 2.5 seconds
+    }
+
+    // Cleanup timeout on component unmount or phase change before timer fires
+    return () => {
+      if (bannerTimeoutRef.current) {
+        clearTimeout(bannerTimeoutRef.current);
+      }
+    };
+  }, [game?.currentPhase]); // Rerun when game phase changes
+  // --- End Banner Effect ---
 
   // Callback for handling playing a card from hand
   const handlePlayCard = useCallback(
@@ -227,40 +274,25 @@ function GameUI() {
 
   return (
     <div className={`game-container game-phase-${game.currentPhase}`}>
-      {/* === New Layout Order === */}
+      {/* Render the banner */} 
+      <PhaseBanner phase={bannerPhase} isVisible={showBanner} />
 
-      {/* Opponent Info */} 
+      {/* === Layout Order === */} 
       <PlayerInfo player={opponent} game={game} isOpponent={true} />
-
-      {/* Opponent Hand */} 
       <PlayerHand {...opponentPlayerProps} />
-
-      {/* Opponent Battlefield */} 
       <Battlefield {...opponentPlayerProps} />
-
-      {/* === Divider === */} 
       <div className="section-divider"></div>
-
-      {/* Player Battlefield */} 
       <Battlefield {...humanPlayerProps} />
-
-      {/* Player Hand */} 
       <PlayerHand {...humanPlayerProps} />
-
-      {/* Player Info */} 
       <PlayerInfo player={player} game={game} isOpponent={false} />
-
-      {/* Action Buttons - Pass overlay state/handlers */}
       <ActionButtons
         game={game}
         onStartBattle={handleStartBattle}
         onPrepareNextRound={handlePrepareNextRound}
         onNewGame={handleNewGame}
-        isDraftOverlayVisible={isDraftOverlayVisible} // Pass state
-        onShowOverlay={handleShowDraftOverlay} // Pass callback
+        isDraftOverlayVisible={isDraftOverlayVisible}
+        onShowOverlay={handleShowDraftOverlay}
       />
-
-      {/* Battle Log */} 
       <BattleLog log={game.getBattleLog()} />
 
       {/* === Draft Pool Overlay (Conditional) === */}

@@ -634,3 +634,39 @@ h1 {
   margin: 10px 0; /* Add some space above and below */
   border-radius: 1px;
 }
+
+/* === Phase Banner Styling === */
+@keyframes slideDownFadeOut {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  10%, 80% { /* Stay visible */
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
+.phase-banner {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%); /* Center horizontally */
+  background-color: rgba(44, 130, 201, 0.9); /* Blue background */
+  color: white;
+  padding: 15px 40px;
+  border-radius: 0 0 15px 15px; /* Rounded bottom corners */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  font-size: 1.8em;
+  font-weight: bold;
+  z-index: 2000; /* Above draft overlay */
+  text-align: center;
+  animation: slideDownFadeOut 2.5s ease-in-out forwards; /* Match timeout duration */
+  min-width: 300px;
+}
+
+/* === End Phase Banner Styling === */
