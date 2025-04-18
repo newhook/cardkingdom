@@ -83,6 +83,9 @@ export class GameView {
     this.container.appendChild(this.actionButtons);
     this.container.appendChild(this.logElement);
 
+    // Set up the game update callback to refresh the UI when the game state changes
+    this.game.setUpdateCallback(() => this.render());
+
     // Initialize the game
     this.game.initialize();
     this.render();
@@ -90,12 +93,16 @@ export class GameView {
 
   // Render the entire game state
   render(): void {
+    console.log(`[GameView.ts] Rendering for phase: ${this.game.currentPhase}`);
     this.renderPlayerInfo();
     this.renderDraftPool();
     this.renderHands();
     this.renderBattlefields();
     this.renderActionButtons();
     this.renderBattleLog();
+
+    // Highlight the current phase in the UI
+    this.container.dataset.gamePhase = this.game.currentPhase;
   }
 
   // Render player information (health, etc.)
@@ -162,6 +169,21 @@ export class GameView {
       draftPointsInfo.innerHTML = `Turn ${this.game.turnNumber} - <strong>${currentDraftingPlayer.name}'s Turn</strong><br>Draft Points: ${this.game.currentDraftPoints}`;
       this.draftPoolElement.appendChild(draftPointsInfo);
 
+      // Add explanation for drafting order
+      if (this.game.turnNumber === 1) {
+        const draftOrderInfo = document.createElement("div");
+        draftOrderInfo.classList.add("draft-order-info");
+        draftOrderInfo.textContent =
+          "First turn: Random player starts drafting";
+        this.draftPoolElement.appendChild(draftOrderInfo);
+      } else {
+        const draftOrderInfo = document.createElement("div");
+        draftOrderInfo.classList.add("draft-order-info");
+        draftOrderInfo.textContent =
+          "Drafting order: Player with lowest health drafts first";
+        this.draftPoolElement.appendChild(draftOrderInfo);
+      }
+
       // Add pass button
       const passButton = document.createElement("button");
       passButton.textContent = "Pass";
@@ -216,6 +238,15 @@ export class GameView {
         index === this.game.currentPlayerIndex ? "Your Hand" : "Opponent Hand";
       handElement.appendChild(title);
 
+      // Add instructions during arrangement phase for human player
+      if (this.game.currentPhase === GamePhase.ARRANGEMENT && index === 0) {
+        const instructions = document.createElement("div");
+        instructions.classList.add("arrangement-instructions");
+        instructions.textContent =
+          "Drag cards to the battlefield or click to play them in order";
+        handElement.appendChild(instructions);
+      }
+
       player.hand.forEach((card, cardIndex) => {
         // Show cards in the current player's hand, show backs for opponent
         const isCurrentPlayer = index === 0; // Assuming player 0 is the human player
@@ -229,6 +260,21 @@ export class GameView {
         ) {
           cardElement.draggable = true;
           cardElement.dataset.handIndex = cardIndex.toString();
+          cardElement.classList.add("draggable");
+
+          cardElement.addEventListener("dragstart", (e) => {
+            e.dataTransfer?.setData("text/plain", cardIndex.toString());
+            e.dataTransfer?.setData("sourceType", "hand");
+            // Add dragstart visual indication
+            setTimeout(() => {
+              cardElement.style.opacity = "0.4";
+            }, 0);
+          });
+
+          cardElement.addEventListener("dragend", () => {
+            // Reset visual indication
+            cardElement.style.opacity = "";
+          });
 
           cardElement.addEventListener("click", () => {
             // When clicking, add to the end of the battlefield
@@ -255,6 +301,47 @@ export class GameView {
           : "Opponent Battlefield";
       battlefield.appendChild(title);
 
+      // Add instructions during arrangement phase for human player
+      if (this.game.currentPhase === GamePhase.ARRANGEMENT && index === 0) {
+        const instructions = document.createElement("div");
+        instructions.classList.add("arrangement-instructions");
+        instructions.textContent =
+          "Drag cards to reorder them. Click 'Ready for Battle' when finished.";
+        battlefield.appendChild(instructions);
+      }
+
+      // Set up drop zone for battlefield during arrangement phase
+      if (this.game.currentPhase === GamePhase.ARRANGEMENT && index === 0) {
+        battlefield.classList.add("drop-zone");
+
+        // Handle dragover to allow dropping
+        battlefield.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer!.dropEffect = "move";
+          battlefield.classList.add("drag-over");
+        });
+
+        battlefield.addEventListener("dragleave", () => {
+          battlefield.classList.remove("drag-over");
+        });
+
+        // Handle drop for cards coming from hand
+        battlefield.addEventListener("drop", (e) => {
+          e.preventDefault();
+          battlefield.classList.remove("drag-over");
+          const sourceIndex = Number(
+            e.dataTransfer?.getData("text/plain") || -1
+          );
+          const sourceType = e.dataTransfer?.getData("sourceType");
+
+          // If from hand, play the card to the battlefield
+          if (sourceType === "hand" && sourceIndex >= 0) {
+            player.playCard(sourceIndex, player.battlefield.length);
+            this.render();
+          }
+        });
+      }
+
       player.battlefield.forEach((card, cardIndex) => {
         const cardComponent = new CardComponent(card, true);
         const cardElement = cardComponent.getElement();
@@ -267,30 +354,55 @@ export class GameView {
           index === this.game.currentPlayerIndex
         ) {
           cardElement.draggable = true;
-
-          // Allow reordering
-          battlefield.addEventListener("dragover", (e) => {
-            e.preventDefault();
-          });
-
-          battlefield.addEventListener("drop", (e) => {
-            e.preventDefault();
-            const sourceIndex = Number(
-              e.dataTransfer?.getData("text/plain") || -1
-            );
-
-            if (sourceIndex >= 0) {
-              // Reorder cards
-              const cards = [...player.battlefield];
-              const card = cards.splice(sourceIndex, 1)[0];
-              cards.splice(cardIndex, 0, card);
-              player.battlefield = cards;
-              this.render();
-            }
-          });
+          cardElement.classList.add("draggable");
 
           cardElement.addEventListener("dragstart", (e) => {
             e.dataTransfer?.setData("text/plain", cardIndex.toString());
+            e.dataTransfer?.setData("sourceType", "battlefield");
+            // Add dragstart visual indication
+            setTimeout(() => {
+              cardElement.style.opacity = "0.4";
+            }, 0);
+          });
+
+          cardElement.addEventListener("dragend", () => {
+            // Reset visual indication
+            cardElement.style.opacity = "";
+          });
+
+          // Add drop functionality to individual cards for precise reordering
+          cardElement.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer!.dropEffect = "move";
+            cardElement.classList.add("drop-target");
+          });
+
+          cardElement.addEventListener("dragleave", () => {
+            cardElement.classList.remove("drop-target");
+          });
+
+          cardElement.addEventListener("drop", (e) => {
+            e.preventDefault();
+            cardElement.classList.remove("drop-target");
+
+            const sourceIndex = Number(
+              e.dataTransfer?.getData("text/plain") || -1
+            );
+            const sourceType = e.dataTransfer?.getData("sourceType");
+
+            if (sourceIndex >= 0) {
+              if (sourceType === "battlefield") {
+                // Reorder cards within battlefield
+                const cards = [...player.battlefield];
+                const card = cards.splice(sourceIndex, 1)[0];
+                cards.splice(cardIndex, 0, card);
+                player.battlefield = cards;
+              } else if (sourceType === "hand") {
+                // Insert card from hand at specific position
+                player.playCard(sourceIndex, cardIndex);
+              }
+              this.render();
+            }
           });
         }
 
@@ -303,10 +415,46 @@ export class GameView {
   private renderActionButtons(): void {
     this.actionButtons.innerHTML = "";
 
+    console.log(
+      "[GameView.ts] Rendering action buttons for phase: " + this.game.currentPhase
+    );
+
     switch (this.game.currentPhase) {
+      case GamePhase.DRAFT:
+        // Show phase info
+        const draftPhaseInfo = document.createElement("div");
+        draftPhaseInfo.classList.add("phase-info");
+        draftPhaseInfo.textContent = "Draft Phase: Acquire cards for your army";
+        this.actionButtons.appendChild(draftPhaseInfo);
+        break;
+
       case GamePhase.ARRANGEMENT:
+        console.log(
+          "[GameView.ts] Rendering action buttons for ARRANGEMENT phase."
+        );
+        // Show phase info with more prominent styling
+        const arrangementPhaseInfo = document.createElement("div");
+        arrangementPhaseInfo.classList.add("phase-info", "active-phase");
+        arrangementPhaseInfo.textContent =
+          "Arrangement Phase: Position your cards for battle";
+        this.actionButtons.appendChild(arrangementPhaseInfo);
+
+        // Add a more detailed instruction for the player
+        const arrangementInstructions = document.createElement("div");
+        arrangementInstructions.classList.add(
+          "arrangement-instructions",
+          "main-instructions"
+        );
+        arrangementInstructions.innerHTML = `
+          <strong>Placement Phase:</strong> Drag cards from your hand to the battlefield.<br>
+          The order matters - cards will attack in sequence from left to right.<br>
+          When you're satisfied with your arrangement, click "Ready for Battle".
+        `;
+        this.actionButtons.appendChild(arrangementInstructions);
+
         const readyButton = document.createElement("button");
         readyButton.textContent = "Ready for Battle";
+        readyButton.classList.add("primary-button");
         readyButton.addEventListener("click", () => {
           this.game.startBattle();
           this.render();
@@ -315,8 +463,15 @@ export class GameView {
         break;
 
       case GamePhase.DAMAGE:
+        // Show phase info
+        const damagePhaseInfo = document.createElement("div");
+        damagePhaseInfo.classList.add("phase-info");
+        damagePhaseInfo.textContent = "Damage Phase: Battle round complete";
+        this.actionButtons.appendChild(damagePhaseInfo);
+
         const nextRoundButton = document.createElement("button");
         nextRoundButton.textContent = "Next Round";
+        nextRoundButton.classList.add("primary-button");
         nextRoundButton.addEventListener("click", () => {
           this.game.prepareNextRound();
           this.render();
@@ -334,6 +489,7 @@ export class GameView {
 
         const newGameButton = document.createElement("button");
         newGameButton.textContent = "New Game";
+        newGameButton.classList.add("primary-button");
         newGameButton.addEventListener("click", () => {
           // Create a new game with the same players
           this.game = new Game([
