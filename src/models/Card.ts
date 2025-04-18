@@ -34,12 +34,14 @@ export class Card {
   maxHealth: number;
   isJoker: boolean;
   cost: number;
+  isDefeated: boolean;
 
   constructor(suit: Suit, rank: Rank) {
     this.suit = suit;
     this.rank = rank;
     this.isJoker = rank === Rank.JOKER;
     this.cost = 2; // Every card costs 2 points regardless of type
+    this.isDefeated = false;
 
     // Set initial health and strength based on rank
     let initialHealth: number;
@@ -158,5 +160,11 @@ export class Card {
   // Get display name for the card
   getDisplayName(): string {
     return `${this.rank} of ${this.suit}`;
+  }
+
+  // Reset card state (e.g., health) - useful for potential future mechanics
+  reset() {
+    this.health = this.maxHealth;
+    this.isDefeated = false;
   }
 }

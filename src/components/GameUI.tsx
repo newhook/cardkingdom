@@ -78,7 +78,7 @@ function GameUI() {
   // --- End Banner State ---
 
   // --- State for Battle Animation Replay ---
-  const [isAnimatingBattle, setIsAnimatingBattle] = useState(false);
+  const isAnimatingRef = useRef(false); // Use ref to track animation status
   const [animationState, setAnimationState] = useState<AnimationState | null>(null);
   const animationTimeoutRef = useRef<number | null>(null);
   // --- End Animation State ---
@@ -167,7 +167,7 @@ function GameUI() {
   // Clear animation state when not in battle phase
   useEffect(() => {
     if (game?.currentPhase !== GamePhase.BATTLE) {
-      setIsAnimatingBattle(false);
+      isAnimatingRef.current = false; // Reset ref if phase changes away
       setAnimationState(null);
       if (animationTimeoutRef.current) {
          clearTimeout(animationTimeoutRef.current);
@@ -178,9 +178,9 @@ function GameUI() {
 
   // --- Effect to run battle animation replay ---
   useEffect(() => {
-    if (game?.currentPhase === GamePhase.BATTLE && game.battleLog.length > 0 && !isAnimatingBattle) {
+    if (game?.currentPhase === GamePhase.BATTLE && game.battleLog && game.battleLog.length > 0 && !isAnimatingRef.current) {
       console.log("[GameUI] Starting battle animation replay...");
-      setIsAnimatingBattle(true);
+      isAnimatingRef.current = true; // Set ref to true
       let step = 0;
       const log = game.getBattleLog(); // Get the structured log
       const stepDuration = 750; // ms between animation steps
@@ -188,11 +188,16 @@ function GameUI() {
       const processNextStep = () => {
         if (step >= log.length) {
           console.log("[GameUI] Battle animation finished.");
-          setIsAnimatingBattle(false);
+          isAnimatingRef.current = false; // Reset ref
           setAnimationState(null); // Clear animation state
+          
+          // --- Call game logic to finalize the battle state ---
+          if (game) {
+             game.finishBattleAnimation(); // Signal game model to change phase
+          }
+          // --- End call ---
+
           // Note: Game state already moved to DAMAGE/GAMEOVER by executeBattle
-          // We might need a slight delay before notifyUpdate is called there
-          // or handle the transition slightly differently.
           return;
         }
 
@@ -247,11 +252,11 @@ function GameUI() {
           clearTimeout(animationTimeoutRef.current);
           animationTimeoutRef.current = null;
         }
-        setIsAnimatingBattle(false); // Ensure cleanup if component unmounts during animation
-         setAnimationState(null);
+        isAnimatingRef.current = false; // Ensure ref is reset on cleanup
+        setAnimationState(null);
       };
     }
-  }, [game?.currentPhase, game?.battleLog, isAnimatingBattle]); // Dependencies for starting/controlling animation
+  }, [game?.currentPhase, game?.battleLog]); // Dependencies for starting/controlling animation
 
   // Callback for handling playing a card from hand
   const handlePlayCard = useCallback(
@@ -423,7 +428,7 @@ function GameUI() {
   };
 
   return (
-    <div className={`game-container game-phase-${game.currentPhase} ${isAnimatingBattle ? 'animating-battle' : ''}`}>
+    <div className={`game-container game-phase-${game.currentPhase}`}>
       <PhaseBanner phase={bannerPhase} isVisible={showBanner} />
 
       {/* Opponent Info */}

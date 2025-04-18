@@ -445,11 +445,13 @@ export class Game {
         console.log(`   Attacking with: ${currentAttackerCard.getDisplayName()}`);
         const attackEventBase = { attacker: { playerIndex: attackerPlayerIndex, card: currentAttackerCard, cardIndex } }; // cardIndex relates to initial position
 
-        // Check defender's *current* battlefield
-        if (defender.battlefield.length > 0) {
-          // Target the first card on the defender's current battlefield
-          const defendingCard = defender.battlefield[0];
-          const defendingCardIndex = 0; // Always target the first live card
+        // --- Check defender's *current* battlefield for *non-defeated* cards ---
+        const liveDefendingCards = defender.battlefield.filter(c => !c.isDefeated);
+        if (liveDefendingCards.length > 0) {
+          // Target the first *live* card on the defender's current battlefield
+          const defendingCard = liveDefendingCards[0];
+          // Find the actual index of this card in the full battlefield array for logging/animation reference
+          const defendingCardIndex = defender.battlefield.findIndex(c => c === defendingCard);
           
           // --- Simultaneous Damage Calculation ---
           const attackerDamage = currentAttackerCard.attack(defendingCard);
@@ -488,7 +490,7 @@ export class Game {
           const attackerDefeated = currentAttackerCard.health <= 0;
           const defenderDefeated = defendingCard.health <= 0;
 
-          // Log and remove defeated defender first (to maintain consistency if both are defeated)
+          // Log and MARK defeated defender
           if (defenderDefeated) {
             console.log(`      -> ${defendingCard.getDisplayName()} defeated!`);
             this.battleLog.push({ 
@@ -497,27 +499,32 @@ export class Game {
                 defender: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defendingCardIndex },
                 message: `${defender.name}'s ${defendingCard.getDisplayName()} is defeated!`
             });
-             // Important: Don't remove immediately, mark for removal or handle removal later
-             // For now, let's just remove from the defender's perspective
-            defender.removeFromBattlefield(0); // Remove from the front
+            // --- Mark as defeated instead of removing ---
+            defendingCard.isDefeated = true; 
+             // defender.removeFromBattlefield(defendingCardIndex); // OLD: Remove immediately
           }
 
-          // Log and remove defeated attacker (if not already removed by prior combat this turn)
-          // Find the attacker's *current* index on their *live* battlefield
-          const currentAttackerIndex = attacker.battlefield.findIndex(c => c === currentAttackerCard);
-          if (attackerDefeated && currentAttackerIndex !== -1) { // Check if still on battlefield
+          // Log and MARK defeated attacker (if not already defeated)
+          // Attacker might have been defeated by the defender's simultaneous attack
+          if (attackerDefeated && !currentAttackerCard.isDefeated) { // Check if not already marked
+              // Find the attacker's *current* index on their *live* battlefield for the log
+              const currentAttackerLogIndex = attacker.battlefield.findIndex(c => c === currentAttackerCard);
               console.log(`      -> ${currentAttackerCard.getDisplayName()} defeated!`);
               this.battleLog.push({ 
                   type: 'defeat', 
-                  attacker: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defenderDefeated ? -1 : defendingCardIndex }, // Defending card caused the defeat (track if it was defeated too)
-                  defender: { playerIndex: attackerPlayerIndex, card: currentAttackerCard, cardIndex: currentAttackerIndex}, // The card that was defeated
+                  // Defending card caused the defeat (pass the card object)
+                  attacker: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defendingCardIndex }, 
+                  // The card that was defeated
+                  defender: { playerIndex: attackerPlayerIndex, card: currentAttackerCard, cardIndex: currentAttackerLogIndex}, 
                   message: `${attacker.name}'s ${currentAttackerCard.getDisplayName()} is defeated!`
               });
-              attacker.removeFromBattlefield(currentAttackerIndex); 
+              // --- Mark as defeated instead of removing ---
+              currentAttackerCard.isDefeated = true;
+              // attacker.removeFromBattlefield(currentAttackerLogIndex); // OLD: Remove immediately 
           }
           
         } else {
-          // Target the player directly
+          // Target the player directly (No live defenders)
           const damage = currentAttackerCard.strength;
           damageTaken.set(defender.id, (damageTaken.get(defender.id) || 0) + damage);
           console.log(`      -> Attacking ${defender.name} directly for ${damage}`);
@@ -545,18 +552,41 @@ export class Game {
     // Battle phase logic is complete
     console.log("--- Battle Sequence Finished ---");
 
-    // Check for game over first
-    if (this.checkGameOver()) {
-      console.log("Game Over detected.");
-      this.currentPhase = GamePhase.GAME_OVER;
-    } else {
-      // Transition to the post-battle pause phase
-      console.log("Battle finished, entering Post-Battle phase.");
-      this.currentPhase = GamePhase.POST_BATTLE;
-      // prepareNextRound will be called by UI action later
-    }
-    this.notifyUpdate(); // Update UI to show post-battle/game-over state
+    // Notify the UI that the battle log is ready and the phase is BATTLE
+    this.notifyUpdate();
   }
+
+  // --- NEW METHOD ---
+  // Called by the UI after battle animations are complete
+  finishBattleAnimation(): void {
+     console.log("[Game] Finishing battle animation, checking game state...");
+     // Check for game over first
+     if (this.checkGameOver()) {
+         console.log("[Game] Game Over detected post-animation.");
+         this.currentPhase = GamePhase.GAME_OVER;
+     } else {
+         // Transition to the post-battle pause phase
+         console.log("[Game] Battle finished, entering Post-Battle phase post-animation.");
+         this.currentPhase = GamePhase.POST_BATTLE;
+     }
+     // Notify the UI of the phase change
+     this.notifyUpdate();
+
+    // --- MOVED Cleanup logic here ---
+    console.log("[Game] Cleaning up defeated cards from battlefields...");
+    this.players.forEach(player => {
+       const initialCount = player.battlefield.length;
+       // Filter out defeated cards, keeping only the live ones
+       player.battlefield = player.battlefield.filter(card => !card.isDefeated);
+       const removedCount = initialCount - player.battlefield.length;
+       if (removedCount > 0) {
+           console.log(`   Removed ${removedCount} defeated cards from ${player.name}'s battlefield.`);
+       }
+    });
+     // Optionally notify update again if card removal needs immediate reflection
+     this.notifyUpdate(); 
+  }
+  // --- END NEW METHOD ---
 
   // Check if all players still have cards on battlefield
   allPlayersHaveCards(): boolean {
