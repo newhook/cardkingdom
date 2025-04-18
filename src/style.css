@@ -496,6 +496,34 @@ h1 {
   background: #2a2a2a;
 }
 
+/* === Draft Overlay Styling === */
+.draft-overlay {
+  position: fixed; /* Position relative to the viewport */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.85); /* Dark semi-transparent background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensure it's on top */
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Style the DraftPool component when inside the overlay */
+.draft-overlay .draft-pool {
+  background: #333; /* Give it a distinct background inside overlay */
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto; /* Allow scrolling if content overflows */
+}
+/* === End Draft Overlay Styling === */
+
 /* Game phase specific styling */
 .game-container[data-game-phase="ARRANGEMENT"] .battlefield {
   background: rgba(44, 130, 201, 0.2);
@@ -564,4 +592,22 @@ h1 {
 
 .draft-pool .pass-button {
   padding: 8px 15px;
+}
+
+/* Added rule for the card container within battlefield */
+.battlefield .cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center; /* Or flex-start if preferred */
+  width: 100%; /* Ensure it takes full width */
+}
+
+/* Added rule for the card container within hand */
+.hand .cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center; /* Or flex-start if preferred */
+  width: 100%; /* Ensure it takes full width */
 }

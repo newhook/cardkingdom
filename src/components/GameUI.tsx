@@ -112,52 +112,65 @@ function GameUI() {
   const player = game.players[0]; // Assuming player 0 is human
   const opponent = game.players[1];
 
-  const humanBattlefieldProps = {
+  const humanPlayerProps = {
     game,
     player,
     isHumanPlayer: true,
     onPlayCard: handlePlayCard,
     onReorderCard: handleReorderCard,
   };
-  const opponentBattlefieldProps = {
-      game,
-      player: opponent,
-      isHumanPlayer: false,
-      onPlayCard: () => {},
-      onReorderCard: () => {},
+  const opponentPlayerProps = {
+    game,
+    player: opponent,
+    isHumanPlayer: false,
+    onPlayCard: () => {},
+    onReorderCard: () => {},
   };
 
   return (
     <div className={`game-container game-phase-${game.currentPhase}`}>
-      <div className="player-area opponent-area">
-        <PlayerInfo player={opponent} game={game} isOpponent={true} />
-        <Battlefield {...opponentBattlefieldProps} />
-        <PlayerHand player={opponent} game={game} isHumanPlayer={false} onPlayCard={() => {}} />
-      </div>
+      {/* === New Layout Order === */}
 
-      <div className="middle-area">
-        {game.currentPhase === GamePhase.DRAFT && (
-          <DraftPool
-            game={game}
-            onDraftCard={handleDraftCard}
-            onPassDraft={handlePassDraft}
-          />
-        )}
-      </div>
+      {/* Opponent Info */} 
+      <PlayerInfo player={opponent} game={game} isOpponent={true} />
 
-      <div className="player-area current-player-area">
-        <PlayerHand player={player} game={game} isHumanPlayer={true} onPlayCard={handlePlayCard} />
-        <Battlefield {...humanBattlefieldProps} />
-        <PlayerInfo player={player} game={game} isOpponent={false} />
-      </div>
+      {/* Opponent Hand */} 
+      <PlayerHand {...opponentPlayerProps} />
 
+      {/* Opponent Battlefield */} 
+      <Battlefield {...opponentPlayerProps} />
+
+      {/* Player Battlefield */} 
+      <Battlefield {...humanPlayerProps} />
+
+      {/* Player Hand */} 
+      <PlayerHand {...humanPlayerProps} />
+
+      {/* Player Info */} 
+      <PlayerInfo player={player} game={game} isOpponent={false} />
+
+      {/* Action Buttons */} 
       <ActionButtons
         game={game}
         onStartBattle={handleStartBattle}
         onPrepareNextRound={handlePrepareNextRound}
         onNewGame={handleNewGame}
       />
+
+      {/* Battle Log */} 
       <BattleLog log={game.getBattleLog()} />
+
+      {/* === Draft Pool Overlay === */} 
+      {game.currentPhase === GamePhase.DRAFT && (
+        <div className="draft-overlay">
+          <DraftPool
+            game={game}
+            onDraftCard={handleDraftCard}
+            onPassDraft={handlePassDraft}
+          />
+        </div>
+      )}
+
     </div>
   );
 }
