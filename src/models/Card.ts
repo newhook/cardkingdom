@@ -31,6 +31,7 @@ export class Card {
   rank: Rank;
   strength: number;
   health: number;
+  maxHealth: number;
   isJoker: boolean;
   cost: number;
 
@@ -41,22 +42,26 @@ export class Card {
     this.cost = 2; // Every card costs 2 points regardless of type
 
     // Set initial health and strength based on rank
+    let initialHealth: number;
     if (this.isJoker) {
       this.strength = 11; // Jokers are powerful but versatile
-      this.health = 11;
+      initialHealth = 11;
     } else if (this.isFaceCard()) {
       // Face cards are stronger than number cards
       this.strength = this.getFaceCardStrength();
-      this.health = this.getFaceCardHealth();
+      initialHealth = this.getFaceCardHealth();
     } else if (rank === Rank.ACE) {
       // Aces are very powerful
       this.strength = 14;
-      this.health = 14;
+      initialHealth = 14;
     } else {
       // Number cards have strength equal to their number value
       this.strength = this.getNumberCardValue();
-      this.health = this.strength;
+      initialHealth = this.strength;
     }
+
+    this.health = initialHealth;
+    this.maxHealth = initialHealth;
   }
 
   // Check if this is a face card (Jack, Queen, King)

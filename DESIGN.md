@@ -7,17 +7,19 @@ Players draft cards to create their "army" which then battles automatically agai
 
 ## Setup
 - Each player starts with some health points (e.g., 20)
-- Players take turns drafting cards using a point-based system
+- Players receive Drafting Points at the start of each Draft Phase (2 points Round 1, +1 each subsequent round).
 - Battle rounds occur after drafting phases
 
-## Drafting Mechanics
-- Each turn is numbered (Turn 1, 2, 3, etc.)
-- First turn drafting starts with a random player
-- In subsequent turns, the player with the lowest health gets to go first
-- Players receive drafting points each turn: starting with 2 points on Turn 1, increasing by 1 point each subsequent turn
-- Every card costs 2 points to draft
-- Players spend their drafting points to acquire cards from the draft pool
-- Unused points do not carry over to the next turn
+## Drafting Mechanics (Accumulating Points)
+- At the start of the **first Draft Phase (Round 1)**, each player receives **2** Drafting Points.
+- At the start of **subsequent Draft Phases (Round 2, 3, ...)**, each player receives **1 more** Drafting Point than the previous round (i.e., 3 points in Round 2, 4 in Round 3, etc.).
+- Players take turns drafting cards. The player with the lowest health goes first (random on the first round).
+- Each card costs 2 Drafting Points.
+- On their turn, a player can either:
+  - **Draft a card:** If they have enough points, they spend points and acquire the card. Their turn continues if they still have points (>= 2).
+  - **Pass:** The player chooses to stop drafting for the *entire current Draft Phase*. They cannot draft again until the next round.
+- A player's turn automatically ends if they run out of Drafting Points (points < 2).
+- The **Draft Phase ends** when *all* players have either passed or have insufficient points to draft any card (points < 2).
 
 ## Card Roles
 - **Number Cards (2-10)**: Basic units with strength equal to their number
@@ -34,16 +36,30 @@ Players draft cards to create their "army" which then battles automatically agai
 - **Clubs**: AoE (Area of Effect) damage
 - **Spades**: Single-target high damage
 
-## Battle Mechanics
-1. Cards automatically battle in sequential order
-2. Number cards deal damage equal to their value
-3. Face cards trigger their special abilities
-4. Suit synergies activate when you have multiple cards of the same suit
-5. Damage that isn't blocked by opponent's cards goes directly to the player
+## Arrangement Phase
+Cards on the battlefield are arranged in a sequence by the player during the Arrangement Phase.
+
+## Battle Phase
+The battle resolves automatically as follows:
+1. Each card in turn from left to right performs an attack which is performed according to the card rules.
+2. If an opponent has no cards, the attack damages the opponent player directly.
+3. Damage is calculated based on the attacker's strength and any abilities/synergies.
+4. Cards have health; if a card's health drops to 0 or below, it is **destroyed and removed** from the battlefield immediately.
+
+After all cards have attacked the battle phase is over.
 
 ## Game Loop
-1. **Draft Phase**: Players spend drafting points to acquire cards
-2. **Arrangement Phase**: Players arrange their cards in battle order
-3. **Battle Phase**: Cards fight automatically
-4. **Damage Phase**: Calculate damage to players
-5. Repeat until one player is eliminated
+1. **Draft Phase**: Players spend drafting points to acquire cards according to the rules above.
+2. **Arrangement Phase**:
+    - Players arrange their drafted cards onto their battlefield sequence.
+    - **Maximum 7 cards** allowed on the battlefield.
+    - Players can **sell** cards currently on their battlefield.
+        - Selling a card removes it permanently.
+        - Selling grants **+1 Drafting Point** to be added to that player's total at the **start of the *next* Draft Phase**.
+    - Phase ends when the player confirms their arrangement (e.g., clicks "Ready for Battle").
+3. **Battle Phase**:
+    - Cards fight automatically based on the Battle Mechanics.
+    - After all card attacks are resolved, any accumulated direct damage is applied to players.
+    - Check for game over condition. (If game over, proceed to step 5).
+4. **Post-Battle Step**: Display results. Player clicks "Continue" to proceed.
+5. Repeat **Draft Phase** (if game not over) until one player is eliminated (Game Over).

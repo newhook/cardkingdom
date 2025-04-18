@@ -24,9 +24,11 @@ a:hover {
 body {
   margin: 0;
   display: flex;
-  place-items: center;
-  min-width: 320px;
+  justify-content: center;
+  align-items: flex-start;
   min-height: 100vh;
+  padding: 2rem 0;
+  box-sizing: border-box;
 }
 
 h1 {
@@ -56,17 +58,26 @@ h1 {
   filter: drop-shadow(0 0 2em #3178c6aa);
 }
 
+/* Ensure root takes width but doesn't interfere with centering */
+#root {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 /* Game Container */
 .game-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
   background: #1a1a1a;
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  max-width: 900px;
-  margin: 0 auto;
+  max-width: 1020px;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 /* Player Areas */
@@ -248,9 +259,44 @@ h1 {
   overflow: hidden;
 }
 
+.card-health {
+  position: absolute;
+  bottom: 5px;
+  left: 8px;
+  /* background-color: #333; */ /* REMOVE or comment out this line */
+  color: white;
+  font-size: 0.7em;  /* Further reduced font size - adjust if needed */
+  padding: 3px 8px;
+  border-radius: 9999px; /* Pill shape */
+  font-weight: bold;
+  white-space: nowrap;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Add text shadow for contrast */
+  transition: background-color 0.3s ease; /* Smooth color transition */
+}
+
+/* --- Suit Colors --- */
+.card.suit-hearts .card-rank,
+.card.suit-hearts .card-suit,
+.card.suit-diamonds .card-rank,
+.card.suit-diamonds .card-suit {
+  color: #e74c3c; /* Red */
+}
+
+.card.suit-clubs .card-rank,
+.card.suit-clubs .card-suit,
+.card.suit-spades .card-rank,
+.card.suit-spades .card-suit {
+  color: #2c3e50; /* Black (or a dark grey) */
+}
+/* --- End Suit Colors --- */
+
 .card:hover {
   transform: translateY(-5px) scale(1.05);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4),
+              0 0 0 3px rgba(255, 215, 0, 0.7);
+  z-index: 10;
 }
 
 /* Draggable card enhancements */
@@ -393,6 +439,29 @@ h1 {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
+/* Sell Button on Card */
+.sell-button {
+  position: absolute;
+  top: 5px;        /* Position from the top edge */
+  right: 5px;       /* Position from the right edge */
+  background-color: rgba(220, 50, 50, 0.8); /* Reddish background */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.7em;  /* Small font */
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 5;       /* Ensure it's above rank/suit but below maybe other overlays */
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+.sell-button:hover {
+  opacity: 1;
+  background-color: #c0392b; /* Darker Red */
+}
+
 /* Phase information */
 .phase-info {
   background-color: rgba(0, 0, 0, 0.5);
@@ -477,6 +546,51 @@ h1 {
   text-align: center;
 }
 
+.battle-log-overlay {
+  /* --- Core Overlay Styles --- */
+  position: fixed; /* Take it out of normal flow, relative to viewport */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000; /* Make sure it's on top */
+
+  /* --- Centering Styles --- */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  /* --- Background --- */
+  background-color: rgba(0, 0, 0, 0.75); /* Dark semi-transparent backdrop */
+  padding: 20px; /* Add padding around the content box */
+}
+
+.battle-log-overlay-content {
+  /* --- Content Box Styles --- */
+  background-color: #222; /* Or match your draft modal background */
+  padding: 20px 30px; /* Adjust padding */
+  border-radius: 8px;
+  max-width: 600px; /* Limit width */
+  width: 90%; /* Responsive width */
+  max-height: 80vh; /* Limit height relative to viewport */
+  overflow-y: auto; /* Scroll if content overflows */
+  color: #eee; /* Text color */
+  border: 1px solid #444;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5); /* Optional shadow */
+}
+
+.battle-log-overlay-content h2 {
+  margin-top: 0;
+  text-align: center;
+  color: #fff; /* Or match title color */
+  margin-bottom: 15px;
+}
+
+/* Ensure BattleLog component fits well */
+.battle-log-overlay .battle-log {
+  width: 100%;
+}
+
 .log-entries {
   display: flex;
   flex-direction: column;
@@ -495,6 +609,34 @@ h1 {
 .log-entry:nth-child(odd) {
   background: #2a2a2a;
 }
+
+/* === Draft Overlay Styling === */
+.draft-overlay {
+  position: fixed; /* Position relative to the viewport */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.85); /* Dark semi-transparent background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensure it's on top */
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Style the DraftPool component when inside the overlay */
+.draft-overlay .draft-pool {
+  background: #333; /* Give it a distinct background inside overlay */
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto; /* Allow scrolling if content overflows */
+}
+/* === End Draft Overlay Styling === */
 
 /* Game phase specific styling */
 .game-container[data-game-phase="ARRANGEMENT"] .battlefield {
@@ -546,3 +688,154 @@ h1 {
     background-color: #f9f9f9;
   }
 }
+
+.draft-pool .draft-order-info {
+  font-size: 0.8em;
+  color: #aaa;
+  margin-bottom: 10px;
+}
+
+/* Added rule for the card container within draft pool */
+.draft-pool .cards-container {
+  display: flex;
+  flex-wrap: wrap; /* Allow cards to wrap to the next line */
+  gap: 10px; /* Add some space between cards */
+  justify-content: center; /* Center cards if they don't fill the row */
+  margin-top: 15px;
+}
+
+.draft-pool .pass-button {
+  padding: 8px 15px;
+}
+
+/* Added rule for the card container within battlefield */
+.battlefield .cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-start;
+  width: 760px;
+  margin: 0 auto;
+  min-height: 140px;
+}
+
+/* Added rule for the card container within hand */
+.hand .cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-start;
+  width: 980px;
+  margin: 0 auto;
+  min-height: 140px;
+}
+
+/* Divider Style */
+.section-divider {
+  height: 2px;
+  background-color: rgba(255, 255, 255, 0.2);
+  margin: 10px 0;
+  border-radius: 1px;
+  transition: opacity 0.3s ease;
+}
+
+/* Container for divider and ready button */
+.divider-container {
+  position: relative; /* For potential absolute positioning inside if needed */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 50px; /* Ensure space for the button */
+  margin: 5px 0; /* Adjust vertical spacing */
+}
+
+/* Hide divider when button is present */
+.divider-container.has-button .section-divider {
+  opacity: 0;
+}
+
+/* Style the specific Ready for Battle button */
+.ready-battle-button {
+  /* position: absolute; Might not be needed with flex centering */
+  padding: 12px 30px !important; /* Make it prominent */
+}
+
+/* === Phase Banner Styling === */
+@keyframes slideDownFadeOut {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  10%, 80% { /* Stay visible */
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
+.phase-banner {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%); /* Center horizontally */
+  background-color: rgba(44, 130, 201, 0.9); /* Blue background */
+  color: white;
+  padding: 15px 40px;
+  border-radius: 0 0 15px 15px; /* Rounded bottom corners */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  font-size: 1.8em;
+  font-weight: bold;
+  z-index: 2000; /* Above draft overlay */
+  text-align: center;
+  animation: slideDownFadeOut 2.5s ease-in-out forwards; /* Match timeout duration */
+  min-width: 300px;
+}
+
+/* === End Phase Banner Styling === */
+
+/* === Battle Animation Styling === */
+@keyframes attackMove {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(0, -20px) scale(1.1); /* Move up/towards target */ }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes takeDamageShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+}
+
+@keyframes defeatFadeOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.8); }
+}
+
+/* Card Animations */
+.card.attacking {
+  animation: attackMove 0.5s ease-in-out;
+  /* outline: 2px solid orange; */ /* Optional outline for debugging */
+  z-index: 15; /* Ensure attacker is visually on top */
+}
+
+.card.taking-damage {
+  animation: takeDamageShake 0.3s ease-in-out;
+  /* outline: 2px solid red; */ /* Optional outline for debugging */
+}
+
+.card.defeated-animation {
+  animation: defeatFadeOut 0.5s ease-in forwards; /* Keep final state */
+  pointer-events: none; /* Prevent interaction after defeat animation */
+}
+
+/* PlayerInfo Animation */
+.player-info.taking-damage {
+  animation: takeDamageShake 0.3s ease-in-out;
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.7); /* Add red glow */
+  border-color: red;
+}
+/* === End Battle Animation Styling === */

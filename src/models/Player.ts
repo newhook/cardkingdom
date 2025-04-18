@@ -7,6 +7,8 @@ export class Player {
   maxHealth: number;
   hand: Card[];
   battlefield: Card[];
+  draftPoints: number; // Points available for the current draft phase
+  pointsEarnedFromSales: number; // Points to add next draft phase
 
   constructor(id: string, name: string, initialHealth: number = 20) {
     this.id = id;
@@ -15,6 +17,8 @@ export class Player {
     this.health = initialHealth;
     this.hand = [];
     this.battlefield = [];
+    this.draftPoints = 0; // Initialized to 0, set at start of draft phase
+    this.pointsEarnedFromSales = 0; // Initialize sales points
   }
 
   // Add a card to the player's hand
@@ -112,5 +116,20 @@ export class Player {
   // Count number of cards of a specific suit
   countSuit(suit: string): number {
     return this.battlefield.filter((card) => card.suit === suit).length;
+  }
+
+  // Sell a card from the battlefield
+  sellCardFromBattlefield(index: number): boolean {
+    if (index < 0 || index >= this.battlefield.length) {
+      console.error(`Invalid index ${index} for selling card.`);
+      return false;
+    }
+    const soldCard = this.battlefield.splice(index, 1)[0];
+    if (soldCard) {
+      this.pointsEarnedFromSales += 1; // Gain 1 point for next round
+      console.log(`${this.name} sold ${soldCard.getDisplayName()} from battlefield. Points for next round: ${this.pointsEarnedFromSales}`);
+      return true;
+    }
+    return false;
   }
 }
