@@ -36,6 +36,7 @@ export class Game {
   draftingPlayerIndex: number; // Index within draftingOrder array
   isComputerDrafting: boolean; // Flag to control AI drafting behavior
   updateCallback: GameUpdateCallback | null; // Callback to notify UI of updates
+  passedPlayerIndices: Set<number>; // Track players who passed in the current round
 
   constructor(playerNames: string[] = ["Player 1", "Player 2"]) {
     this.players = playerNames.map(
@@ -53,6 +54,7 @@ export class Game {
     this.currentDraftPoints = 2; // Start with 2 drafting points on Turn 1
     this.isComputerDrafting = false; // Initialize AI drafting flag
     this.updateCallback = null; // Initialize update callback
+    this.passedPlayerIndices = new Set(); // Initialize pass tracker
   }
 
   // Set a callback function that will be called when the game state changes
@@ -191,41 +193,51 @@ export class Game {
     return this.currentDraftPoints;
   }
 
-  // Move to the next player in the drafting sequence
+  // Move to the next player in the drafting sequence and check for phase end
   nextDraftingPlayer(): void {
     this.draftingPlayerIndex++;
 
-    // If we've completed a full round of drafting (all players have drafted)
+    // --- Check if a full round of drafting completed --- 
     if (this.draftingPlayerIndex >= this.draftingOrder.length) {
-      this.turnNumber++; // Increment turn number
-      this.draftingPlayerIndex = 0; // Reset to first player
-
-      // Check if draft phase should end
-      if (this.shouldEndDraftPhase()) {
+      // --- Round finished. Check if ALL players passed this round --- 
+      if (this.passedPlayerIndices.size === this.players.length) {
+        // All players passed consecutively -> End Draft Phase
         console.log(
-          `[Game.ts] Draft ended (Turn ${this.turnNumber}). Setting phase to ARRANGEMENT.`
+          "[Game.ts] All players passed consecutively. Setting phase to ARRANGEMENT."
         );
         this.currentPhase = GamePhase.ARRANGEMENT;
-        this.arrangeBattlefieldForComputer(); // Arrange cards for computer player
-        this.notifyUpdate(); // Make sure UI updates to show arrangement phase
-        return; // Stop here to ensure we don't trigger more drafting
+        this.arrangeBattlefieldForComputer(); // Computer places its cards
+        this.passedPlayerIndices.clear(); // Clear pass status for the next phase
+        this.notifyUpdate();
+        return; // Exit here, phase changed.
       } else {
+        // Round finished, but not everyone passed. Start a new turn.
+        this.turnNumber++;
+        this.draftingPlayerIndex = 0;
+        this.passedPlayerIndices.clear(); // Reset pass status for the new turn
+
         // Determine new drafting order based on player health
         this.determineDraftingOrder();
 
         // Refill draft pool and set new draft points
         this.refillDraftPool();
+        this.currentDraftPoints = 2 + (this.turnNumber - 1); // Points increase each turn
 
-        // Increase drafting points by 1 each turn
-        this.currentDraftPoints = 2 + (this.turnNumber - 1);
+        // Notify UI and check for computer turn
+        console.log(`[Game.ts] Starting Turn ${this.turnNumber}`);
+        this.notifyUpdate();
+        setTimeout(() => this.checkAndTriggerComputerDraft(), 500); // Check if AI drafts first
+        return; // Exit after starting new turn setup
       }
     }
 
-    // Check if it's the computer's turn to draft (with a slight delay)
+    // --- Round NOT complete, move to next player in the current turn --- 
+    console.log(
+      `[Game.ts] Moving to next drafter (index in order: ${this.draftingPlayerIndex})`
+    );
+    // Check if it's the computer's turn to draft for the next turn
+    this.notifyUpdate(); // Update UI for the next player's turn
     setTimeout(() => this.checkAndTriggerComputerDraft(), 500);
-
-    // Notify the UI that the game state has changed
-    this.notifyUpdate();
   }
 
   // Arrange battlefield cards for computer player
@@ -259,24 +271,29 @@ export class Game {
     const card = this.draftPool[poolIndex];
     const cardCost = 2; // Every card costs 2 points
 
-    // Check if player has enough drafting points
     if (cardCost > this.currentDraftPoints) {
-      return false; // Not enough points to draft this card
+      return false;
     }
 
-    // Get the current drafting player
     const currentDraftingPlayer = this.getCurrentDraftingPlayer();
+    // Find the actual index (0 or 1) of the player in the main players array
+    const currentPlayerRealIndex = this.players.findIndex(p => p.id === currentDraftingPlayer.id);
 
-    // Remove the card from the draft pool
+    // --- Clear pass status since player drafted --- 
+    console.log(`[Game.ts] Player ${currentPlayerRealIndex} drafted, clearing pass status.`);
+    this.passedPlayerIndices.delete(currentPlayerRealIndex);
+
     const draftedCard = this.draftPool.splice(poolIndex, 1)[0];
     currentDraftingPlayer.addCardToHand(draftedCard);
-
-    // Deduct the card's cost from drafting points
     this.currentDraftPoints -= cardCost;
 
-    // If no more draft points or draft pool is empty, move to next player
     if (this.currentDraftPoints < 2 || this.draftPool.length === 0) {
-      this.nextDraftingPlayer();
+      // Automatically move to next player if out of points/cards
+      // Don't mark this as a pass.
+      this.nextDraftingPlayer(); 
+    } else {
+      // Player still has points and cards available, update UI but stay on their turn
+      this.notifyUpdate();
     }
 
     return true;
@@ -285,15 +302,18 @@ export class Game {
   // Pass the current draft turn
   passDraft(): void {
     if (this.currentPhase === GamePhase.DRAFT) {
-      this.nextDraftingPlayer();
+      // Find the actual index (0 or 1) of the passing player
+      const currentPlayerRealIndex = this.draftingOrder[this.draftingPlayerIndex];
+      console.log(`[Game.ts] Player ${currentPlayerRealIndex} passed.`);
+      this.passedPlayerIndices.add(currentPlayerRealIndex); 
+      this.nextDraftingPlayer(); // Proceed to next player/check phase end
     }
   }
 
-  // Check if draft phase should end
-  shouldEndDraftPhase(): boolean {
-    // End drafting after 3 turns or when deck is empty
-    return this.turnNumber > 3 || this.deck.isEmpty();
-  }
+  // Check if draft phase should end (REMOVED - Logic moved to nextDraftingPlayer)
+  // shouldEndDraftPhase(): boolean {
+  //   return this.turnNumber > 3 || this.deck.isEmpty();
+  // }
 
   // Start the battle phase
   startBattle(): void {

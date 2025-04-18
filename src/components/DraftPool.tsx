@@ -6,9 +6,10 @@ interface DraftPoolProps {
   game: Game;
   onDraftCard: (index: number) => void;
   onPassDraft: () => void;
+  onHideOverlay: () => void;
 }
 
-const DraftPool: React.FC<DraftPoolProps> = ({ game, onDraftCard, onPassDraft }) => {
+const DraftPool: React.FC<DraftPoolProps> = ({ game, onDraftCard, onPassDraft, onHideOverlay }) => {
   const { turnNumber, currentDraftPoints, draftPool } = game;
   const currentDraftingPlayer = game.getCurrentDraftingPlayer();
 
@@ -21,7 +22,10 @@ const DraftPool: React.FC<DraftPoolProps> = ({ game, onDraftCard, onPassDraft })
 
   return (
     <div className="draft-pool">
-      <h3>Draft Pool</h3>
+      <div className="draft-pool-header">
+        <h3>Draft Pool</h3>
+        <button onClick={onHideOverlay} className="hide-button" title="Hide Draft Panel">×</button>
+      </div>
 
       <div className="draft-points-info">
         Turn {turnNumber} - <strong>{currentDraftingPlayer.name}'s Turn</strong><br />
