@@ -24,9 +24,11 @@ a:hover {
 body {
   margin: 0;
   display: flex;
-  place-items: center;
-  min-width: 320px;
+  justify-content: center;
+  align-items: flex-start;
   min-height: 100vh;
+  padding: 2rem 0;
+  box-sizing: border-box;
 }
 
 h1 {
@@ -56,17 +58,26 @@ h1 {
   filter: drop-shadow(0 0 2em #3178c6aa);
 }
 
+/* Ensure root takes width but doesn't interfere with centering */
+#root {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 /* Game Container */
 .game-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
   background: #1a1a1a;
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  max-width: 900px;
-  margin: 0 auto;
+  max-width: 1020px;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 /* Player Areas */
@@ -599,8 +610,10 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  justify-content: center; /* Or flex-start if preferred */
-  width: 100%; /* Ensure it takes full width */
+  justify-content: flex-start;
+  width: 760px;
+  margin: 0 auto;
+  min-height: 140px;
 }
 
 /* Added rule for the card container within hand */
@@ -608,6 +621,8 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  justify-content: center; /* Or flex-start if preferred */
-  width: 100%; /* Ensure it takes full width */
+  justify-content: flex-start;
+  width: 980px;
+  margin: 0 auto;
+  min-height: 140px;
 }
