@@ -1,6 +1,6 @@
 import React from 'react';
 import { Player } from '../models/Player';
-import { Game, GamePhase } from '../models/Game';
+import { Game, GamePhase, AnimationState } from '../models/Game';
 import CardComponent from './CardComponent';
 
 interface BattlefieldProps {
@@ -9,6 +9,9 @@ interface BattlefieldProps {
   isHumanPlayer: boolean;
   onPlayCard: (handIndex: number, targetPosition: number) => void;
   onReorderCard: (startIndex: number, targetIndex: number) => void;
+  onSellCard: (battlefieldIndex: number) => void;
+  animationState: AnimationState | null;
+  playerIndex: number;
 }
 
 const Battlefield: React.FC<BattlefieldProps> = ({
@@ -17,6 +20,9 @@ const Battlefield: React.FC<BattlefieldProps> = ({
   isHumanPlayer,
   onPlayCard,
   onReorderCard,
+  onSellCard,
+  animationState,
+  playerIndex
 }) => {
   const isArrangementPhase = game.currentPhase === GamePhase.ARRANGEMENT;
 
@@ -99,20 +105,42 @@ const Battlefield: React.FC<BattlefieldProps> = ({
       onDrop={handleDropContainer}
     >
       <div className="cards-container">
-        {player.battlefield.map((card, index) => (
-          <CardComponent
-            key={`${player.id}-bf-${card.suit}-${card.rank}-${index}`}
-            card={card}
-            isFaceUp={true} // Always show face up on battlefield
-            draggable={isArrangementPhase && isHumanPlayer}
-            onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleCardDragStart(e, index)}
-            onDragEnd={handleCardDragEnd}
-            onDragOver={isArrangementPhase && isHumanPlayer ? handleCardDragOver : undefined}
-            onDragLeave={isArrangementPhase && isHumanPlayer ? handleCardDragLeave : undefined}
-            onDrop={isArrangementPhase && isHumanPlayer ? (e: React.DragEvent<HTMLDivElement>) => handleCardDrop(e, index) : undefined}
-            className={isArrangementPhase && isHumanPlayer ? 'draggable' : ''}
-          />
-        ))}
+        {player.battlefield.map((card, index) => {
+          // Determine animation classes for this card
+          const isAttacking = 
+            animationState?.attackerInfo?.playerIndex === playerIndex && 
+            animationState?.attackerInfo?.cardIndex === index;
+          const isDefending = 
+            animationState?.defenderInfo?.playerIndex === playerIndex && 
+            animationState?.defenderInfo?.cardIndex === index;
+          const isDefeated = 
+            isDefending && animationState?.isDefeat;
+          const isTakingDamage = 
+            isDefending && animationState?.damageAmount !== null;
+
+          const cardAnimClasses = [
+             isAttacking ? 'attacking' : '',
+             isDefending ? 'defending' : '',
+             isTakingDamage ? 'taking-damage' : '',
+             isDefeated ? 'defeated-animation' : '', // Use a specific class for defeat animation
+          ].filter(Boolean).join(' ');
+
+          return (
+            <CardComponent
+              key={`${player.id}-bf-${card.suit}-${card.rank}-${index}`}
+              card={card}
+              isFaceUp={true}
+              draggable={isArrangementPhase && isHumanPlayer}
+              onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleCardDragStart(e, index)}
+              onDragEnd={handleCardDragEnd}
+              onDragOver={isArrangementPhase && isHumanPlayer ? handleCardDragOver : undefined}
+              onDragLeave={isArrangementPhase && isHumanPlayer ? handleCardDragLeave : undefined}
+              onDrop={isArrangementPhase && isHumanPlayer ? (e: React.DragEvent<HTMLDivElement>) => handleCardDrop(e, index) : undefined}
+              onSellClick={isArrangementPhase && isHumanPlayer ? () => onSellCard(index) : undefined}
+              className={`${isArrangementPhase && isHumanPlayer ? 'draggable' : ''} ${cardAnimClasses}`.trim()}
+            />
+          );
+        })}
       </div>
     </div>
   );

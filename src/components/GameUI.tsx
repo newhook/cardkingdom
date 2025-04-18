@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Game, GamePhase, Player } from '../models/Game';
+import { Game, GamePhase, Player, BattleEvent, Card, AnimationState } from '../models/Game';
 import PlayerInfo from './PlayerInfo';
 import PlayerHand from './PlayerHand';
 import Battlefield from './Battlefield';
@@ -88,6 +88,12 @@ function GameUI() {
   const bannerTimeoutRef = useRef<number | null>(null); // Use number for browser timeout ID
   // --- End Banner State ---
 
+  // --- State for Battle Animation Replay ---
+  const [isAnimatingBattle, setIsAnimatingBattle] = useState(false);
+  const [animationState, setAnimationState] = useState<AnimationState | null>(null);
+  const animationTimeoutRef = useRef<number | null>(null);
+  // --- End Animation State ---
+
   // Callback to force component update when game state changes
   const forceUpdate = useCallback(() => {
     setGameVersion((v) => v + 1);
@@ -153,13 +159,111 @@ function GameUI() {
   }, [game?.currentPhase]); // Rerun when game phase changes
   // --- End Banner Effect ---
 
+  // Clear animation state when not in battle phase
+  useEffect(() => {
+    if (game?.currentPhase !== GamePhase.BATTLE) {
+      setIsAnimatingBattle(false);
+      setAnimationState(null);
+      if (animationTimeoutRef.current) {
+         clearTimeout(animationTimeoutRef.current);
+         animationTimeoutRef.current = null;
+      }
+    }
+  }, [game?.currentPhase]);
+
+  // --- Effect to run battle animation replay ---
+  useEffect(() => {
+    if (game?.currentPhase === GamePhase.BATTLE && game.battleLog.length > 0 && !isAnimatingBattle) {
+      console.log("[GameUI] Starting battle animation replay...");
+      setIsAnimatingBattle(true);
+      let step = 0;
+      const log = game.getBattleLog(); // Get the structured log
+      const stepDuration = 750; // ms between animation steps
+
+      const processNextStep = () => {
+        if (step >= log.length) {
+          console.log("[GameUI] Battle animation finished.");
+          setIsAnimatingBattle(false);
+          setAnimationState(null); // Clear animation state
+          // Note: Game state already moved to DAMAGE/GAMEOVER by executeBattle
+          // We might need a slight delay before notifyUpdate is called there
+          // or handle the transition slightly differently.
+          return;
+        }
+
+        const event = log[step];
+        console.log(`[GameUI] Animation Step ${step}:`, event);
+
+        let nextAnimState: AnimationState | null = null;
+
+        switch(event.type) {
+            case 'attack':
+                const attackerCardIndex = game.players[event.attacker!.playerIndex].battlefield.findIndex(c => c === event.attacker!.card);
+                const defenderCardIndex = event.defender?.card ? game.players[event.defender!.playerIndex].battlefield.findIndex(c => c === event.defender!.card) : null;
+                
+                // Ensure attacker card exists before setting attackerInfo
+                const validAttackerInfo = event.attacker?.card && attackerCardIndex !== -1 
+                    ? { ...event.attacker, card: event.attacker.card, cardIndex: attackerCardIndex } 
+                    : null;
+
+                nextAnimState = {
+                    attackerInfo: validAttackerInfo, // Use validated info
+                    defenderInfo: event.defender ? { ...event.defender, cardIndex: defenderCardIndex } : {playerIndex: -1, cardIndex: null, card: null},
+                    damageAmount: null,
+                    isDefeat: false,
+                };
+                break;
+            case 'damage':
+            case 'defeat':
+                 // We mainly use the message from the log now, but could highlight defender
+                 const currentDefenderCardIndex = event.defender?.card ? game.players[event.defender!.playerIndex].battlefield.findIndex(c => c === event.defender!.card) : null;
+                 nextAnimState = {
+                     attackerInfo: null, // Or carry over from previous attack?
+                     defenderInfo: event.defender ? { ...event.defender, cardIndex: currentDefenderCardIndex } : {playerIndex: -1, cardIndex: null, card: null}, // Provide default if null
+                     damageAmount: event.amount ?? null,
+                     isDefeat: event.type === 'defeat',
+                 };
+                 break;
+            // Ignore 'round' and 'info' for direct animation state for now
+        }
+        
+        setAnimationState(nextAnimState);
+
+        step++;
+        animationTimeoutRef.current = window.setTimeout(processNextStep, stepDuration);
+      };
+
+      // Start the animation loop
+      processNextStep();
+
+      // Cleanup function
+      return () => {
+        if (animationTimeoutRef.current) {
+          clearTimeout(animationTimeoutRef.current);
+          animationTimeoutRef.current = null;
+        }
+        setIsAnimatingBattle(false); // Ensure cleanup if component unmounts during animation
+         setAnimationState(null);
+      };
+    }
+  }, [game?.currentPhase, game?.battleLog, isAnimatingBattle]); // Dependencies for starting/controlling animation
+
   // Callback for handling playing a card from hand
   const handlePlayCard = useCallback(
     (handIndex: number, targetPosition: number) => {
       if (!game || game.currentPhase !== GamePhase.ARRANGEMENT) return;
       const player = game.players[0]; // Assuming player 0 is human
+      
+      // --- Check battlefield limit --- 
+      if (player.battlefield.length >= 7) {
+          console.log("Cannot place card: Battlefield full (Max 7).");
+          // Optionally provide user feedback (e.g., toast notification)
+          return; // Stop execution
+      }
+
+      // Proceed to play card if limit not reached
       player.playCard(handIndex, targetPosition);
-      forceUpdate(); // Trigger re-render after state change
+      forceUpdate();
     },
     [game, forceUpdate]
   );
@@ -229,6 +333,25 @@ function GameUI() {
   }, []);
   // --- End Draft Overlay Callbacks ---
 
+  // --- Add Callback for Selling Card ---
+  const handleSellCard = useCallback(
+      (playerIndex: number, battlefieldIndex: number) => {
+          if (!game || game.currentPhase !== GamePhase.ARRANGEMENT) return;
+          // Only allow human player (index 0) to sell for now
+          if (playerIndex !== 0) {
+              console.warn("Tried to sell card for non-human player.");
+              return;
+          }
+          const player = game.players[playerIndex];
+          const success = player.sellCardFromBattlefield(battlefieldIndex);
+          if (success) {
+              forceUpdate(); // Update UI after selling
+          }
+      },
+      [game, forceUpdate]
+  );
+  // --- End Sell Card Callback ---
+
   // Render loading state or the main game UI
   if (!game) {
     return <div>Loading Game...</div>;
@@ -244,6 +367,7 @@ function GameUI() {
     isHumanPlayer: true,
     onPlayCard: handlePlayCard,
     onReorderCard: handleReorderCard,
+    onSellCard: (index: number) => handleSellCard(0, index), // Pass seller callback for human
   };
   const opponentPlayerProps = {
     game,
@@ -251,37 +375,57 @@ function GameUI() {
     isHumanPlayer: false,
     onPlayCard: () => {},
     onReorderCard: () => {},
+    onSellCard: () => {}, // No selling for opponent
   };
 
   return (
-    <div className={`game-container game-phase-${game.currentPhase}`}>
-      {/* Render the banner */} 
+    <div className={`game-container game-phase-${game.currentPhase} ${isAnimatingBattle ? 'animating-battle' : ''}`}>
       <PhaseBanner phase={bannerPhase} isVisible={showBanner} />
 
-      {/* === Layout Order === */} 
-      <PlayerInfo player={opponent} game={game} isOpponent={true} />
-      <PlayerHand {...opponentPlayerProps} />
-      <Battlefield {...opponentPlayerProps} />
+      {/* Opponent Info */}
+      <PlayerInfo 
+        player={opponent} 
+        game={game} 
+        isOpponent={true} 
+        animationState={animationState}
+        playerIndex={1}
+      />
+      {/* Opponent Hand */}
+      <PlayerHand {...opponentPlayerProps} /> 
+      {/* Opponent Battlefield - Pass dummy sell handler */}
+      <Battlefield 
+        {...opponentPlayerProps} 
+        animationState={animationState}
+        playerIndex={1}
+      />
 
-      {/* === Divider / Ready Button Container === */} 
-      <div 
-        className={`divider-container ${game.currentPhase === GamePhase.ARRANGEMENT ? 'has-button' : ''}`}
-      >
+      {/* Divider / Ready Button Container */}
+      <div className={`divider-container ${game.currentPhase === GamePhase.ARRANGEMENT ? 'has-button' : ''}`}>
         <div className="section-divider"></div>
         {game.currentPhase === GamePhase.ARRANGEMENT && (
-          <button 
-            className="primary-button ready-battle-button" 
-            onClick={handleStartBattle}
-          >
+          <button className="primary-button ready-battle-button" onClick={handleStartBattle}>
             Ready for Battle
           </button>
         )}
       </div>
 
-      {/* Player Battlefield */} 
-      <Battlefield {...humanPlayerProps} />
+      {/* Player Battlefield - Pass real sell handler */}
+      <Battlefield 
+        {...humanPlayerProps} 
+        animationState={animationState}
+        playerIndex={0}
+      />
+      {/* Player Hand */}
       <PlayerHand {...humanPlayerProps} />
-      <PlayerInfo player={player} game={game} isOpponent={false} />
+      {/* Player Info */}
+      <PlayerInfo 
+        player={player} 
+        game={game} 
+        isOpponent={false} 
+        animationState={animationState}
+        playerIndex={0}
+      />
+      {/* Action Buttons */}
       <ActionButtons
         game={game}
         onPrepareNextRound={handlePrepareNextRound}
@@ -289,9 +433,10 @@ function GameUI() {
         isDraftOverlayVisible={isDraftOverlayVisible}
         onShowOverlay={handleShowDraftOverlay}
       />
-      <BattleLog log={game.getBattleLog()} />
+      {/* Battle Log */}
+      <BattleLog log={game.getBattleLog().map(event => event.message || `Event: ${event.type}`)} />
 
-      {/* === Draft Pool Overlay (Conditional) === */}
+      {/* Draft Pool Overlay */}
       {game.currentPhase === GamePhase.DRAFT && isDraftOverlayVisible && (
         <div className="draft-overlay">
           <DraftPool
@@ -302,9 +447,8 @@ function GameUI() {
           />
         </div>
       )}
-
     </div>
   );
 }
 
-export default GameUI; 
+export default GameUI;

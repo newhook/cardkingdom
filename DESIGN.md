@@ -7,7 +7,7 @@ Players draft cards to create their "army" which then battles automatically agai
 
 ## Setup
 - Each player starts with some health points (e.g., 20)
-- Players receive Drafting Points at the start of each Draft Phase, amount depending on the round.
+- Players receive Drafting Points at the start of each Draft Phase (2 points Round 1, +1 each subsequent round).
 - Battle rounds occur after drafting phases
 
 ## Drafting Mechanics (Accumulating Points)
@@ -36,16 +36,26 @@ Players draft cards to create their "army" which then battles automatically agai
 - **Clubs**: AoE (Area of Effect) damage
 - **Spades**: Single-target high damage
 
-## Battle Mechanics
-1. Cards automatically battle in sequential order
-2. Number cards deal damage equal to their value
-3. Face cards trigger their special abilities
-4. Suit synergies activate when you have multiple cards of the same suit
-5. Damage that isn't blocked by opponent's cards goes directly to the player
+## Arrangement Phase
+Cards on the battlefield are arranged in a sequence by the player during the Arrangement Phase.
+
+## Battle Phase
+The battle resolves automatically as follows:
+1. Each card in turn from left to right performs an attack which is performed according to the card rules.
+2. If an opponent has no cards, the attack damages the opponent player directly.
+3. Damage is calculated based on the attacker's strength and any abilities/synergies.
+4. Cards have health; if a card's health drops to 0 or below, it is **destroyed and removed** from the battlefield immediately.
+
+After all cards have attacked the battle phase is over.
 
 ## Game Loop
-1. **Draft Phase**: Players spend drafting points to acquire cards
-2. **Arrangement Phase**: Players arrange their cards in battle order
-3. **Battle Phase**: Cards fight automatically
-4. **Damage Phase**: Calculate damage to players
-5. Repeat until one player is eliminated
+1. **Draft Phase**: Players spend drafting points to acquire cards according to the rules above.
+2. **Arrangement Phase**:
+    - Players arrange their drafted cards onto their battlefield sequence.
+    - **Maximum 7 cards** allowed on the battlefield.
+    - Players can **sell** cards currently on their battlefield.
+        - Selling a card removes it permanently.
+        - Selling grants **+1 Drafting Point** to be added to that player's total at the **start of the *next* Draft Phase**.
+    - Phase ends when the player confirms their arrangement (e.g., clicks "Ready for Battle").
+3. **Battle Phase**: Cards fight automatically based on the Battle Mechanics.
+5. Repeat until one player is eliminated.

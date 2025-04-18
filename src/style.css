@@ -422,6 +422,27 @@ h1 {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
+/* Sell Button on Card */
+.sell-button {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  padding: 2px 6px;
+  font-size: 10px;
+  background-color: #e74c3c; /* Red */
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s, background-color 0.2s;
+}
+
+.sell-button:hover {
+  opacity: 1;
+  background-color: #c0392b; /* Darker Red */
+}
+
 /* Phase information */
 .phase-info {
   background-color: rgba(0, 0, 0, 0.5);
@@ -710,3 +731,47 @@ h1 {
 }
 
 /* === End Phase Banner Styling === */
+
+/* === Battle Animation Styling === */
+@keyframes attackMove {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(0, -20px) scale(1.1); /* Move up/towards target */ }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes takeDamageShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+}
+
+@keyframes defeatFadeOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.8); }
+}
+
+/* Card Animations */
+.card.attacking {
+  animation: attackMove 0.5s ease-in-out;
+  /* outline: 2px solid orange; */ /* Optional outline for debugging */
+  z-index: 15; /* Ensure attacker is visually on top */
+}
+
+.card.taking-damage {
+  animation: takeDamageShake 0.3s ease-in-out;
+  /* outline: 2px solid red; */ /* Optional outline for debugging */
+}
+
+.card.defeated-animation {
+  animation: defeatFadeOut 0.5s ease-in forwards; /* Keep final state */
+  pointer-events: none; /* Prevent interaction after defeat animation */
+}
+
+/* PlayerInfo Animation */
+.player-info.taking-damage {
+  animation: takeDamageShake 0.3s ease-in-out;
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.7); /* Add red glow */
+  border-color: red;
+}
+/* === End Battle Animation Styling === */

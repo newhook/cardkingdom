@@ -2,7 +2,25 @@ import { Card } from "./Card";
 import { Deck } from "./Deck";
 import { Player } from "./Player";
 
-export { Player };
+export { Player, Card };
+
+// --- Shared Types ---
+export interface BattleEvent {
+  type: 'attack' | 'damage' | 'defeat' | 'info' | 'round';
+  attacker?: { playerIndex: number; card: Card | null; cardIndex?: number };
+  defender?: { playerIndex: number; card: Card | null; cardIndex?: number | null };
+  amount?: number;
+  message?: string;
+}
+
+// Define and export AnimationState structure here
+export interface AnimationState {
+  attackerInfo: { playerIndex: number; cardIndex: number; card: Card } | null;
+  defenderInfo: { playerIndex: number; cardIndex: number | null; card: Card | null } | null; // Allow null defenderInfo
+  damageAmount: number | null;
+  isDefeat: boolean;
+}
+// --- End Shared Types ---
 
 export enum GamePhase {
   SETUP = "setup",
@@ -30,7 +48,7 @@ export class Game {
   currentPhase: GamePhase;
   turnNumber: number;
   roundNumber: number;
-  battleLog: string[];
+  battleLog: BattleEvent[]; // Changed from string[]
   currentDraftPoints: number;
   draftingOrder: number[]; // Track the order of players for drafting
   draftingPlayerIndex: number; // Index within draftingOrder array
@@ -53,7 +71,7 @@ export class Game {
     this.currentPhase = GamePhase.SETUP;
     this.turnNumber = 1;
     this.roundNumber = 1;
-    this.battleLog = [];
+    this.battleLog = []; // Initialize as empty array of BattleEvents
     this.currentDraftPoints = 2; // Start with 2 drafting points on Turn 1
     this.playersPassedDraftPhase = new Set();
     this.isComputerDrafting = false;
@@ -386,89 +404,109 @@ export class Game {
     this.executeBattle();
   }
 
-  // Execute battle between players
+  // Corrected executeBattle for new rules (sequential attack per card)
   executeBattle(): void {
     this.battleLog = [];
     const damageTaken = new Map<string, number>();
+    this.players.forEach(player => damageTaken.set(player.id, 0));
 
-    // Initialize damage counters
-    for (const player of this.players) {
-      damageTaken.set(player.id, 0);
-    }
+    // Create initial snapshots of battlefields to determine attack order
+    const initialBattlefields = this.players.map(p => [...p.battlefield]);
+    console.log("Initial Battlefields:", initialBattlefields.map(bf => bf.map(c => c.getDisplayName())));
 
-    // Process battle in rounds until one side has no more cards
-    let battleRound = 1;
-    while (this.allPlayersHaveCards()) {
-      this.battleLog.push(`Battle Round ${battleRound}:`);
+    this.battleLog.push({ type: 'info', message: `Battle Starts!` });
 
-      // Each player's first card attacks
-      for (let i = 0; i < this.players.length; i++) {
-        const attacker = this.players[i];
-        const defender = this.players[(i + 1) % this.players.length];
+    // Loop through each player (Player 0 then Player 1)
+    for (let attackerPlayerIndex = 0; attackerPlayerIndex < this.players.length; attackerPlayerIndex++) {
+      const defenderPlayerIndex = (attackerPlayerIndex + 1) % this.players.length;
+      const attacker = this.players[attackerPlayerIndex];
+      const defender = this.players[defenderPlayerIndex];
+      const initialAttackerBattlefield = initialBattlefields[attackerPlayerIndex];
 
-        if (attacker.battlefield.length === 0) continue;
+      console.log(`-- ${attacker.name}'s Turn to Attack --`);
 
-        const attackingCard = attacker.battlefield[0];
+      // Loop through the attacker's *initial* battlefield sequence
+      for (let cardIndex = 0; cardIndex < initialAttackerBattlefield.length; cardIndex++) {
+        const initialAttackingCard = initialAttackerBattlefield[cardIndex];
 
+        // Find the current state of this attacking card on the *real* battlefield
+        // It might have been defeated before its turn!
+        const currentAttackerCard = attacker.battlefield.find(c => c === initialAttackingCard);
+        
+        if (!currentAttackerCard) {
+           console.log(`   ${initialAttackingCard.getDisplayName()} already defeated, skipping attack.`);
+           this.battleLog.push({ type: 'info', message: `${attacker.name}'s ${initialAttackingCard.getDisplayName()} was already defeated.` });
+           continue; // Skip attack if card is gone
+        }
+
+        console.log(`   Attacking with: ${currentAttackerCard.getDisplayName()}`);
+        const attackEventBase = { attacker: { playerIndex: attackerPlayerIndex, card: currentAttackerCard, cardIndex } }; // cardIndex relates to initial position
+
+        // Check defender's *current* battlefield
         if (defender.battlefield.length > 0) {
-          // Attack opponent's first card
+          // Target the first card on the defender's current battlefield
           const defendingCard = defender.battlefield[0];
-          const damage = attackingCard.attack(defendingCard);
+          const defendingCardIndex = 0; // Always target the first live card
+          const damage = currentAttackerCard.attack(defendingCard);
 
-          this.battleLog.push(
-            `${attacker.name}'s ${attackingCard.getDisplayName()} attacks ${
-              defender.name
-            }'s ${defendingCard.getDisplayName()} for ${damage} damage.`
-          );
+          this.battleLog.push({ 
+              type: 'attack', 
+              ...attackEventBase,
+              defender: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defendingCardIndex } // Index 0 on real battlefield
+          });
+          this.battleLog.push({ 
+              type: 'damage', 
+              attacker: attackEventBase.attacker,
+              defender: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defendingCardIndex },
+              amount: damage, 
+              message: `${attacker.name}'s ${currentAttackerCard.getDisplayName()} damages ${defender.name}'s ${defendingCard.getDisplayName()} for ${damage}`
+           });
 
           defendingCard.health -= damage;
 
           if (defendingCard.health <= 0) {
-            this.battleLog.push(
-              `${
-                defender.name
-              }'s ${defendingCard.getDisplayName()} is defeated!`
-            );
-            defender.removeFromBattlefield(0);
+            console.log(`      -> ${defendingCard.getDisplayName()} defeated!`);
+            this.battleLog.push({ 
+                type: 'defeat', 
+                attacker: attackEventBase.attacker,
+                defender: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defendingCardIndex },
+                message: `${defender.name}'s ${defendingCard.getDisplayName()} is defeated!`
+            });
+            defender.removeFromBattlefield(0); // Remove from the front
           }
         } else {
-          // Direct attack to player
-          const damage = attackingCard.strength;
-          damageTaken.set(
-            defender.id,
-            (damageTaken.get(defender.id) || 0) + damage
-          );
+          // Target the player directly
+          const damage = currentAttackerCard.strength;
+          damageTaken.set(defender.id, (damageTaken.get(defender.id) || 0) + damage);
+          console.log(`      -> Attacking ${defender.name} directly for ${damage}`);
 
-          this.battleLog.push(
-            `${attacker.name}'s ${attackingCard.getDisplayName()} attacks ${
-              defender.name
-            } directly for ${damage} damage!`
-          );
-
-          // Remove the attacking card after it attacks
-          attacker.removeFromBattlefield(0);
+           this.battleLog.push({ 
+               type: 'attack',
+               ...attackEventBase,
+               defender: { playerIndex: defenderPlayerIndex, card: null, cardIndex: null } // Target player
+           });
+          this.battleLog.push({ 
+              type: 'damage',
+              attacker: attackEventBase.attacker,
+              defender: { playerIndex: defenderPlayerIndex, card: null, cardIndex: null },
+              amount: damage, 
+              message: `${attacker.name}'s ${currentAttackerCard.getDisplayName()} attacks ${defender.name} directly for ${damage}`
+           });
         }
-      }
+        // Brief pause in log generation - UI animation handles visual delay
+      } // End loop through attacker's cards
+    } // End loop through players
 
-      battleRound++;
-
-      // Apply special effects based on suit synergies
-      this.applySuitSynergies();
-    }
-
-    // Apply damage to players
+    // Apply cumulative direct player damage *after* all card attacks
     this.applyDamageToPlayers(damageTaken);
 
-    // Move to next phase
+    // Battle phase logic is complete
+    console.log("--- Battle Sequence Finished ---");
     this.currentPhase = GamePhase.DAMAGE;
-
-    // Check if game is over
     if (this.checkGameOver()) {
       this.currentPhase = GamePhase.GAME_OVER;
     }
-
-    // Notify the UI that the battle is complete and the phase is now DAMAGE or GAME_OVER
-    this.notifyUpdate();
+    this.notifyUpdate(); // Notify UI battle log is ready for replay
   }
 
   // Check if all players still have cards on battlefield
@@ -476,61 +514,24 @@ export class Game {
     return this.players.some((player) => player.battlefield.length > 0);
   }
 
-  // Apply suit synergy effects
-  applySuitSynergies(): void {
-    for (const player of this.players) {
-      // Hearts synergy: Healing
-      if (player.countSuit("hearts") >= 2) {
-        const healAmount = Math.floor(player.countSuit("hearts") / 2);
-        player.heal(healAmount);
-        this.battleLog.push(
-          `${player.name} heals ${healAmount} health from Hearts synergy.`
-        );
-      }
-
-      // Clubs synergy: AoE damage
-      if (player.countSuit("clubs") >= 3) {
-        const opponent = this.players.find((p) => p.id !== player.id);
-        if (opponent) {
-          const damageAmount = Math.floor(player.countSuit("clubs") / 3);
-
-          // Damage all opponent cards
-          opponent.battlefield.forEach((card) => {
-            card.health -= damageAmount;
-            this.battleLog.push(
-              `${player.name}'s Clubs synergy deals ${damageAmount} damage to ${
-                opponent.name
-              }'s ${card.getDisplayName()}.`
-            );
-          });
-
-          // Remove defeated cards
-          for (let i = opponent.battlefield.length - 1; i >= 0; i--) {
-            if (opponent.battlefield[i].health <= 0) {
-              const defeatedCard = opponent.removeFromBattlefield(i);
-              if (defeatedCard) {
-                this.battleLog.push(
-                  `${
-                    opponent.name
-                  }'s ${defeatedCard.getDisplayName()} is defeated!`
-                );
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Apply accumulated damage to players
+  // Corrected applyDamageToPlayers 
   applyDamageToPlayers(damageTaken: Map<string, number>): void {
-    for (const player of this.players) {
-      const damage = damageTaken.get(player.id) || 0;
-      if (damage > 0) {
-        player.takeDamage(damage);
-        this.battleLog.push(`${player.name} takes ${damage} damage.`);
+      for (const [playerId, damage] of damageTaken.entries()) {
+          if (damage > 0) {
+              const player = this.players.find(p => p.id === playerId);
+              if(player){
+                  const playerIndex = this.players.indexOf(player);
+                  player.takeDamage(damage); // Apply damage first
+                  // Log the event AFTER applying damage
+                  this.battleLog.push({ 
+                      type: 'damage', // Changed type to 'damage' for consistency
+                      defender: {playerIndex: playerIndex, card: null}, // Target is the player
+                      amount: damage,
+                      message: `${player.name} takes ${damage} damage.` 
+                  });
+              }
+          }
       }
-    }
   }
 
   // Check if the game is over
@@ -565,29 +566,34 @@ export class Game {
   // Prepare for the next round (Rounds 2+)
   prepareNextRound(): void {
     console.log("--- Preparing Next Round --- ");
-    this.roundNumber++; // Increment round number first
+    this.roundNumber++;
     this.turnNumber = 1;
     this.currentPhase = GamePhase.DRAFT;
     this.playersPassedDraftPhase.clear();
     this.battleLog = [];
 
-    // Assign draft points: Round Number + 1
-    const pointsToAssign = this.roundNumber + 1;
-    console.log(`Assigning points for Round ${this.roundNumber}: ${pointsToAssign}`);
+    // Calculate base points for the round
+    const basePointsToAssign = this.roundNumber + 1;
+    console.log(`Assigning points for Round ${this.roundNumber}: Base=${basePointsToAssign}`);
 
     this.players.forEach(player => {
-      player.draftPoints = pointsToAssign;
-      console.log(`Assigned ${player.draftPoints} draft points to ${player.name}`);
+      // Add points earned from sales last round
+      const totalPoints = basePointsToAssign + player.pointsEarnedFromSales;
+      console.log(` - ${player.name} sales points: ${player.pointsEarnedFromSales}`);
+      player.draftPoints = totalPoints;
+      player.pointsEarnedFromSales = 0; // Reset sales points for the new round
+      console.log(` => Total assigned: ${player.draftPoints} to ${player.name}`);
     });
 
-    this.determineDraftingOrder(); // Sets draftingOrder
-    this.draftingOrderPosition = -1; // Reset order position before starting
+    this.determineDraftingOrder();
     this.refillDraftPool();
-    this.switchToNextEligibleDrafter(); // Start the process
+    this.switchToNextEligibleDrafter();
   }
 
-  // Get the battle log
-  getBattleLog(): string[] {
+  // Update getBattleLog return type
+  getBattleLog(): BattleEvent[] {
     return this.battleLog;
   }
 }
+
+

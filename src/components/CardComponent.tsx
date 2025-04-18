@@ -8,6 +8,10 @@ interface CardComponentProps {
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent<HTMLDivElement>) => void;
   onDragEnd?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragOver?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragLeave?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDrop?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onSellClick?: () => void;
   className?: string;
   children?: React.ReactNode; // For things like cost badges
 }
@@ -19,6 +23,10 @@ const CardComponent: React.FC<CardComponentProps> = ({
   draggable,
   onDragStart,
   onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onSellClick,
   className = '',
   children,
 }) => {
@@ -31,6 +39,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
   };
 
   const cardClass = `card suit-${card.suit.toLowerCase()} ${className}`.trim();
+  const canSell = !!onSellClick;
 
   return (
     <div
@@ -39,6 +48,9 @@ const CardComponent: React.FC<CardComponentProps> = ({
       draggable={draggable}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
       title={isFaceUp ? card.getDisplayName() : 'Card'} // Tooltip
     >
       {isFaceUp ? (
@@ -46,6 +58,18 @@ const CardComponent: React.FC<CardComponentProps> = ({
           <div className="card-rank">{card.rank}</div>
           <div className="card-suit">{suitSymbols[card.suit]}</div>
           {children} {/* Render any additional elements like badges */}
+          {canSell && (
+            <button 
+              className="sell-button" 
+              onClick={(e) => { 
+                e.stopPropagation(); // Prevent card click if button is clicked
+                onSellClick(); 
+              }}
+              title="Sell Card (+1 Point Next Round)"
+            >
+              Sell
+            </button>
+          )}
         </>
       ) : (
         <div className="card-back"></div>
