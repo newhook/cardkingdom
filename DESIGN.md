@@ -7,17 +7,19 @@ Players draft cards to create their "army" which then battles automatically agai
 
 ## Setup
 - Each player starts with some health points (e.g., 20)
-- Players take turns drafting cards using a point-based system
+- Players receive Drafting Points at the start of each Draft Phase, amount depending on the round.
 - Battle rounds occur after drafting phases
 
-## Drafting Mechanics
-- Each turn is numbered (Turn 1, 2, 3, etc.)
-- First turn drafting starts with a random player
-- In subsequent turns, the player with the lowest health gets to go first
-- Players receive drafting points each turn: starting with 2 points on Turn 1, increasing by 1 point each subsequent turn
-- Every card costs 2 points to draft
-- Players spend their drafting points to acquire cards from the draft pool
-- Unused points do not carry over to the next turn
+## Drafting Mechanics (Accumulating Points)
+- At the start of the **first Draft Phase (Round 1)**, each player receives **2** Drafting Points.
+- At the start of **subsequent Draft Phases (Round 2, 3, ...)**, each player receives **1 more** Drafting Point than the previous round (i.e., 3 points in Round 2, 4 in Round 3, etc.).
+- Players take turns drafting cards. The player with the lowest health goes first (random on the first round).
+- Each card costs 2 Drafting Points.
+- On their turn, a player can either:
+  - **Draft a card:** If they have enough points, they spend points and acquire the card. Their turn continues if they still have points (>= 2).
+  - **Pass:** The player chooses to stop drafting for the *entire current Draft Phase*. They cannot draft again until the next round.
+- A player's turn automatically ends if they run out of Drafting Points (points < 2).
+- The **Draft Phase ends** when *all* players have either passed or have insufficient points to draft any card (points < 2).
 
 ## Card Roles
 - **Number Cards (2-10)**: Basic units with strength equal to their number

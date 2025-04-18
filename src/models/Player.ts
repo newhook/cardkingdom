@@ -7,6 +7,7 @@ export class Player {
   maxHealth: number;
   hand: Card[];
   battlefield: Card[];
+  draftPoints: number; // Points available for the current draft phase
 
   constructor(id: string, name: string, initialHealth: number = 20) {
     this.id = id;
@@ -15,6 +16,7 @@ export class Player {
     this.health = initialHealth;
     this.hand = [];
     this.battlefield = [];
+    this.draftPoints = 0; // Initialized to 0, set at start of draft phase
   }
 
   // Add a card to the player's hand

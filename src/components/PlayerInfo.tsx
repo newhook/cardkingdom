@@ -9,16 +9,16 @@ interface PlayerInfoProps {
 }
 
 const PlayerInfo: React.FC<PlayerInfoProps> = ({ player, game, isOpponent }) => {
-  const { currentPhase, turnNumber, currentDraftPoints } = game;
+  const { currentPhase } = game;
   const isCurrentPlayer = game.players[game.currentPlayerIndex]?.id === player.id;
-
-  let isDraftingPlayer = false;
-  if (currentPhase === GamePhase.DRAFT) {
-    const currentDraftingPlayer = game.getCurrentDraftingPlayer();
-    isDraftingPlayer = currentDraftingPlayer?.id === player.id;
+  
+  let isCurrentDraftingPlayer = false;
+  if (currentPhase === GamePhase.DRAFT && game.draftingPlayerIndex !== -1) {
+    isCurrentDraftingPlayer = game.players[game.draftingPlayerIndex]?.id === player.id;
   }
 
-  const isActive = currentPhase === GamePhase.DRAFT ? isDraftingPlayer : isCurrentPlayer;
+  // Use drafting player status only during draft phase for highlighting
+  const isActive = currentPhase === GamePhase.DRAFT ? isCurrentDraftingPlayer : isCurrentPlayer;
 
   const classes = [
     'player-info',
@@ -33,9 +33,10 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({ player, game, isOpponent }) => 
       <div className="player-health">
         ❤️ {player.health}/{player.maxHealth}
       </div>
-      {isDraftingPlayer && (
+      {/* Show draft points during DRAFT phase */}
+      {currentPhase === GamePhase.DRAFT && (
         <div className="draft-info">
-          Turn {turnNumber} - Draft Points: {currentDraftPoints}
+          Draft Points: {player.draftPoints}
         </div>
       )}
     </div>

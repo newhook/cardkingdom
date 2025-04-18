@@ -34,9 +34,11 @@ export class Game {
   currentDraftPoints: number;
   draftingOrder: number[]; // Track the order of players for drafting
   draftingPlayerIndex: number; // Index within draftingOrder array
+  playersPassedDraftPhase: Set<number>; // Track who passed THIS phase
   isComputerDrafting: boolean; // Flag to control AI drafting behavior
   updateCallback: GameUpdateCallback | null; // Callback to notify UI of updates
   passedPlayerIndices: Set<number>; // Track players who passed in the current round
+  draftingOrderPosition: number; // Index within draftingOrder array
 
   constructor(playerNames: string[] = ["Player 1", "Player 2"]) {
     this.players = playerNames.map(
@@ -45,15 +47,17 @@ export class Game {
     this.deck = new Deck(true); // Include jokers
     this.draftPool = [];
     this.currentPlayerIndex = 0; // Used for battle/arrangement phases
-    this.draftingPlayerIndex = 0; // Used specifically for drafting
-    this.draftingOrder = [];
+    this.draftingPlayerIndex = -1; // Actual player index (0 or 1)
+    this.draftingOrder = []; // Order of player indices
+    this.draftingOrderPosition = -1; // Position in the order array
     this.currentPhase = GamePhase.SETUP;
     this.turnNumber = 1;
     this.roundNumber = 1;
     this.battleLog = [];
     this.currentDraftPoints = 2; // Start with 2 drafting points on Turn 1
-    this.isComputerDrafting = false; // Initialize AI drafting flag
-    this.updateCallback = null; // Initialize update callback
+    this.playersPassedDraftPhase = new Set();
+    this.isComputerDrafting = false;
+    this.updateCallback = null;
     this.passedPlayerIndices = new Set(); // Initialize pass tracker
   }
 
@@ -69,28 +73,31 @@ export class Game {
     }
   }
 
-  // Initialize the game
+  // Initialize the game (Correctly sets 2 points for Round 1)
   initialize(): void {
+    console.log("--- Initializing Game ---");
     this.deck.shuffle();
     this.currentPhase = GamePhase.DRAFT;
 
-    // Randomly determine who drafts first on the first turn
-    this.determineDraftingOrder();
-    this.refillDraftPool();
+    this.roundNumber = 1;
+    this.playersPassedDraftPhase.clear();
+    this.players.forEach(player => {
+      player.draftPoints = 2; // Start with 2 points on Round 1
+      console.log(`Assigned ${player.draftPoints} draft points to ${player.name} for initial draft.`);
+    });
 
-    // Start AI drafting if computer goes first (with a slight delay)
-    if (this.getCurrentDraftingPlayer().id === "1") {
-      setTimeout(() => this.checkAndTriggerComputerDraft(), 1000);
-    }
+    this.determineDraftingOrder(); // Sets draftingOrder
+    this.draftingOrderPosition = -1; // Reset order position before starting
+    this.refillDraftPool();
+    this.switchToNextEligibleDrafter(); // Start the process
   }
 
   // Check if it's the computer's turn to draft and trigger AI drafting
   checkAndTriggerComputerDraft(): void {
-    if (this.currentPhase !== GamePhase.DRAFT) return;
+    if (this.currentPhase !== GamePhase.DRAFT || this.draftingPlayerIndex === -1) return;
     if (this.isComputerDrafting) return;
 
-    // Assume player 1 (index 0) is human and player 2 (index 1) is AI
-    const currentDraftingPlayer = this.getCurrentDraftingPlayer();
+    const currentDraftingPlayer = this.players[this.draftingPlayerIndex];
     const isComputerTurn = currentDraftingPlayer.id === "1"; // Player with ID "1" is the computer
 
     if (isComputerTurn) {
@@ -106,43 +113,50 @@ export class Game {
     }
   }
 
-  // Computer AI drafting logic
+  // Computer AI drafting logic - Needs update to use player points
   computerDraft(): void {
-    console.log("Computer drafting started");
-    // Continue drafting until out of points or no cards left
-    while (this.currentDraftPoints >= 2 && this.draftPool.length > 0) {
-      // Simple AI strategy: pick the highest strength card
-      let bestCardIndex = 0;
-      let bestCardStrength = 0;
+    if (this.draftingPlayerIndex === -1) return; // Should not happen
+    const computerPlayer = this.players[this.draftingPlayerIndex];
 
-      // Find the strongest card in the draft pool
+    console.log(`${computerPlayer.name} (AI) drafting started. Points: ${computerPlayer.draftPoints}`);
+
+    let draftedThisTurn = false;
+    // Continue drafting while AI has points and there are cards
+    while (computerPlayer.draftPoints >= 2 && this.draftPool.length > 0) {
+      // Simple AI strategy: pick the highest strength card it can afford
+      let bestCardIndex = -1;
+      let bestCardStrength = -1; // Use -1 to ensure any card is initially better
+
       for (let i = 0; i < this.draftPool.length; i++) {
         const card = this.draftPool[i];
-        if (card.strength > bestCardStrength) {
+        // Basic check: can afford and is stronger than current best
+        if (card.cost <= computerPlayer.draftPoints && card.strength > bestCardStrength) {
           bestCardStrength = card.strength;
           bestCardIndex = i;
         }
       }
 
-      console.log(
-        `Computer selecting card at index ${bestCardIndex} with strength ${bestCardStrength}`
-      );
-
-      // Draft the selected card
-      const success = this.draftCard(bestCardIndex);
-      console.log(
-        `Computer draft success: ${success}, remaining points: ${this.currentDraftPoints}`
-      );
-
-      // If drafting failed or we're out of points, stop drafting
-      if (!success || this.currentDraftPoints < 2) {
-        break;
+      if (bestCardIndex !== -1) {
+        console.log(
+          `${computerPlayer.name} (AI) selecting card at index ${bestCardIndex} with strength ${bestCardStrength}`
+        );
+        const success = this.draftCard(bestCardIndex); // Draft the card
+        if (success) {
+           draftedThisTurn = true;
+        } else {
+           console.error("AI draft failed unexpectedly.");
+           break; // Stop if drafting failed somehow
+        }
+      } else {
+        // No affordable card found or no card meets criteria
+        console.log(`${computerPlayer.name} (AI) found no suitable card to draft.`);
+        break; // Stop drafting loop
       }
     }
 
-    // Pass if no more cards can be drafted
-    console.log("Computer passing draft turn");
-    this.passDraft();
+    // AI passes its turn if it didn't draft or ran out of points/options
+    console.log(`${computerPlayer.name} (AI) passing draft phase.`);
+    this.passDraft(); // Pass to lock the AI out and trigger next player check
   }
 
   // Determine drafting order based on player health
@@ -178,9 +192,11 @@ export class Game {
   }
 
   // Get the current player for drafting
-  getCurrentDraftingPlayer(): Player {
-    const playerIndex = this.draftingOrder[this.draftingPlayerIndex];
-    return this.players[playerIndex];
+  getCurrentDraftingPlayer(): Player | null {
+    if (this.draftingPlayerIndex === -1 || this.currentPhase !== GamePhase.DRAFT) {
+        return null; // No one is drafting or not in draft phase
+    }
+    return this.players[this.draftingPlayerIndex];
   }
 
   // Get the current player (used for battle/arrangement phases)
@@ -265,49 +281,93 @@ export class Game {
 
   // Draft a card from the draft pool
   draftCard(poolIndex: number): boolean {
-    if (this.currentPhase !== GamePhase.DRAFT) return false;
+    if (this.currentPhase !== GamePhase.DRAFT || this.draftingPlayerIndex === -1) return false;
+
+    const currentDrafter = this.players[this.draftingPlayerIndex];
+    if (!currentDrafter || this.playersPassedDraftPhase.has(this.draftingPlayerIndex)) {
+      console.error("Attempted to draft for player who has passed or doesn't exist.");
+      return false; // Player already passed or is invalid
+    }
+
     if (poolIndex < 0 || poolIndex >= this.draftPool.length) return false;
 
     const card = this.draftPool[poolIndex];
-    const cardCost = 2; // Every card costs 2 points
+    const cardCost = 2;
 
-    if (cardCost > this.currentDraftPoints) {
-      return false;
+    if (cardCost > currentDrafter.draftPoints) {
+      console.log(`${currentDrafter.name} cannot afford card (Cost: ${cardCost}, Points: ${currentDrafter.draftPoints})`);
+      return false; // Not enough points
     }
-
-    const currentDraftingPlayer = this.getCurrentDraftingPlayer();
-    // Find the actual index (0 or 1) of the player in the main players array
-    const currentPlayerRealIndex = this.players.findIndex(p => p.id === currentDraftingPlayer.id);
-
-    // --- Clear pass status since player drafted --- 
-    console.log(`[Game.ts] Player ${currentPlayerRealIndex} drafted, clearing pass status.`);
-    this.passedPlayerIndices.delete(currentPlayerRealIndex);
 
     const draftedCard = this.draftPool.splice(poolIndex, 1)[0];
-    currentDraftingPlayer.addCardToHand(draftedCard);
-    this.currentDraftPoints -= cardCost;
+    currentDrafter.addCardToHand(draftedCard);
+    currentDrafter.draftPoints -= cardCost;
+    console.log(`${currentDrafter.name} drafted ${draftedCard.getDisplayName()}. Points remaining: ${currentDrafter.draftPoints}`);
 
-    if (this.currentDraftPoints < 2 || this.draftPool.length === 0) {
-      // Automatically move to next player if out of points/cards
-      // Don't mark this as a pass.
-      this.nextDraftingPlayer(); 
+    // If player runs out of points, automatically try to switch
+    if (currentDrafter.draftPoints < cardCost) {
+      console.log(`${currentDrafter.name} has insufficient points for next draft.`);
+      this.switchToNextEligibleDrafter();
     } else {
-      // Player still has points and cards available, update UI but stay on their turn
+      // Player still has points, update UI but stay on their turn
       this.notifyUpdate();
+      // Re-check if computer should draft (if it's AI's turn)
+      setTimeout(() => this.checkAndTriggerComputerDraft(), 500);
     }
-
     return true;
   }
 
   // Pass the current draft turn
   passDraft(): void {
-    if (this.currentPhase === GamePhase.DRAFT) {
-      // Find the actual index (0 or 1) of the passing player
-      const currentPlayerRealIndex = this.draftingOrder[this.draftingPlayerIndex];
-      console.log(`[Game.ts] Player ${currentPlayerRealIndex} passed.`);
-      this.passedPlayerIndices.add(currentPlayerRealIndex); 
-      this.nextDraftingPlayer(); // Proceed to next player/check phase end
+    if (this.currentPhase === GamePhase.DRAFT && this.draftingPlayerIndex !== -1) {
+      if (!this.playersPassedDraftPhase.has(this.draftingPlayerIndex)){
+        console.log(`Player ${this.players[this.draftingPlayerIndex].name} (Index: ${this.draftingPlayerIndex}) passed the draft phase.`);
+        this.playersPassedDraftPhase.add(this.draftingPlayerIndex);
+      }
+      this.switchToNextEligibleDrafter(); // Find next eligible player or end phase
     }
+  }
+
+  // New method to find the next player eligible to draft or end the phase
+  switchToNextEligibleDrafter(): void {
+    if (this.currentPhase !== GamePhase.DRAFT || this.draftingOrder.length === 0) return;
+
+    console.log("Switching to next eligible drafter based on order:", this.draftingOrder);
+    const numPlayers = this.players.length;
+
+    // Loop through the DRAFTING ORDER, starting from the next position
+    for (let i = 0; i < numPlayers; i++) {
+      // Calculate the next position in the draftingOrder array, wrapping around
+      this.draftingOrderPosition = (this.draftingOrderPosition + 1) % numPlayers;
+      const playerIndexToCheck = this.draftingOrder[this.draftingOrderPosition]; // Get player index from order
+      const playerToCheck = this.players[playerIndexToCheck];
+      const hasPassed = this.playersPassedDraftPhase.has(playerIndexToCheck);
+      const hasPoints = playerToCheck.draftPoints >= 2; // Assuming card cost is 2
+
+      console.log(
+        `Checking pos ${this.draftingOrderPosition} -> player ${playerIndexToCheck} (${playerToCheck.name}): Passed=${hasPassed}, HasPoints=${hasPoints}`
+      );
+
+      if (!hasPassed && hasPoints) {
+        // Found the next eligible player
+        console.log(`Next drafter is ${playerToCheck.name} (Index: ${playerIndexToCheck})`);
+        this.draftingPlayerIndex = playerIndexToCheck; // Set the actual drafting player index
+        this.notifyUpdate();
+        setTimeout(() => this.checkAndTriggerComputerDraft(), 500);
+        return; // Exit function, new drafter found
+      }
+      // If player not eligible, loop continues to check the next in draftingOrder
+    }
+
+    // --- If loop completes, no eligible player was found in the order --- 
+    console.log(
+      "No eligible players remaining in drafting order. Ending Draft Phase."
+    );
+    this.currentPhase = GamePhase.ARRANGEMENT;
+    this.draftingPlayerIndex = -1; // No one is drafting
+    this.draftingOrderPosition = -1;
+    this.arrangeBattlefieldForComputer();
+    this.notifyUpdate();
   }
 
   // Check if draft phase should end (REMOVED - Logic moved to nextDraftingPlayer)
@@ -502,21 +562,28 @@ export class Game {
     return null;
   }
 
-  // Prepare for the next round
+  // Prepare for the next round (Rounds 2+)
   prepareNextRound(): void {
-    this.roundNumber++;
+    console.log("--- Preparing Next Round --- ");
+    this.roundNumber++; // Increment round number first
     this.turnNumber = 1;
     this.currentPhase = GamePhase.DRAFT;
-    this.currentPlayerIndex = 0;
-    this.currentDraftPoints = 2; // Reset draft points for the new round to 2
-    this.determineDraftingOrder(); // Reset drafting order for the new round
+    this.playersPassedDraftPhase.clear();
+    this.battleLog = [];
+
+    // Assign draft points: Round Number + 1
+    const pointsToAssign = this.roundNumber + 1;
+    console.log(`Assigning points for Round ${this.roundNumber}: ${pointsToAssign}`);
+
+    this.players.forEach(player => {
+      player.draftPoints = pointsToAssign;
+      console.log(`Assigned ${player.draftPoints} draft points to ${player.name}`);
+    });
+
+    this.determineDraftingOrder(); // Sets draftingOrder
+    this.draftingOrderPosition = -1; // Reset order position before starting
     this.refillDraftPool();
-
-    // Check if computer drafts first in the new round (with a slight delay)
-    setTimeout(() => this.checkAndTriggerComputerDraft(), 1000);
-
-    // Notify the UI that the game state has changed
-    this.notifyUpdate();
+    this.switchToNextEligibleDrafter(); // Start the process
   }
 
   // Get the battle log
