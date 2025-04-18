@@ -57,5 +57,8 @@ After all cards have attacked the battle phase is over.
         - Selling a card removes it permanently.
         - Selling grants **+1 Drafting Point** to be added to that player's total at the **start of the *next* Draft Phase**.
     - Phase ends when the player confirms their arrangement (e.g., clicks "Ready for Battle").
-3. **Battle Phase**: Cards fight automatically based on the Battle Mechanics.
-5. Repeat until one player is eliminated.
+3. **Battle Phase**:
+    - Cards fight automatically based on the Battle Mechanics.
+    - After all card attacks are resolved, any accumulated direct damage is applied to players.
+    - Check for game over condition.
+4. Repeat **Draft Phase** (if game not over) until one player is eliminated.

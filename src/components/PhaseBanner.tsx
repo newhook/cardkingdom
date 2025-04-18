@@ -13,7 +13,6 @@ const formatPhaseName = (phase: GamePhase | null): string => {
     case GamePhase.DRAFT: return 'Draft Phase';
     case GamePhase.ARRANGEMENT: return 'Arrangement Phase';
     case GamePhase.BATTLE: return 'Battle Phase';
-    case GamePhase.DAMAGE: return 'Damage Phase';
     case GamePhase.GAME_OVER: return 'Game Over';
     default: return '';
   }

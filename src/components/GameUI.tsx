@@ -10,7 +10,6 @@ import PhaseBanner from './PhaseBanner';
 // --- ActionButtons Component (defined inline) ---
 interface ActionButtonsProps {
   game: Game;
-  onPrepareNextRound: () => void;
   onNewGame: () => void;
   isDraftOverlayVisible: boolean;
   onShowOverlay: () => void;
@@ -18,7 +17,6 @@ interface ActionButtonsProps {
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({
   game,
-  onPrepareNextRound,
   onNewGame,
   isDraftOverlayVisible,
   onShowOverlay,
@@ -41,18 +39,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
       case GamePhase.ARRANGEMENT:
         return null;
-
-      case GamePhase.DAMAGE:
-        return (
-          <>
-            <div className="phase-info">
-              Damage Phase: Battle round complete
-            </div>
-            <button className="primary-button" onClick={onPrepareNextRound}>
-              Next Round
-            </button>
-          </>
-        );
 
       case GamePhase.GAME_OVER:
         const winner = game.getWinner();
@@ -313,7 +299,8 @@ function GameUI() {
   }, [game, forceUpdate]);
 
   const handlePrepareNextRound = useCallback(() => {
-    if (!game || game.currentPhase !== GamePhase.DAMAGE) return;
+    // Note: Called programmatically by Game.ts after battle ends
+    if (!game) return; // Basic check
     game.prepareNextRound();
     forceUpdate();
   }, [game, forceUpdate]);
@@ -428,7 +415,6 @@ function GameUI() {
       {/* Action Buttons */}
       <ActionButtons
         game={game}
-        onPrepareNextRound={handlePrepareNextRound}
         onNewGame={handleNewGame}
         isDraftOverlayVisible={isDraftOverlayVisible}
         onShowOverlay={handleShowDraftOverlay}

@@ -27,7 +27,6 @@ export enum GamePhase {
   DRAFT = "draft",
   ARRANGEMENT = "arrangement",
   BATTLE = "battle",
-  DAMAGE = "damage",
   GAME_OVER = "game_over",
 }
 
@@ -502,11 +501,18 @@ export class Game {
 
     // Battle phase logic is complete
     console.log("--- Battle Sequence Finished ---");
-    this.currentPhase = GamePhase.DAMAGE;
+
+    // Check for game over immediately
     if (this.checkGameOver()) {
+      console.log("Game Over detected.");
       this.currentPhase = GamePhase.GAME_OVER;
+      this.notifyUpdate(); // Update UI to show game over state
+    } else {
+      // If not game over, immediately prepare the next round (Draft Phase)
+      console.log("Battle finished, preparing next round.");
+      // Small delay to allow final animations/state updates to show before phase change
+      setTimeout(() => this.prepareNextRound(), 500); 
     }
-    this.notifyUpdate(); // Notify UI battle log is ready for replay
   }
 
   // Check if all players still have cards on battlefield
