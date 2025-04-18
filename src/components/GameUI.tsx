@@ -7,13 +7,6 @@ import DraftPool from './DraftPool';
 import BattleLog from './BattleLog';
 import ActionButtons from './ActionButtons';
 
-// Placeholder for child components - we will create these later
-// const PlayerInfoPlaceholder = ({ player }: { player: Player }) => <div>{player.name} Info</div>;
-// const DraftPoolPlaceholder = ({ game }: { game: Game }) => <div>Draft Pool</div>;
-// const PlayerHandPlaceholder = ({ player }: { player: Player }) => <div>{player.name} Hand</div>;
-// const BattlefieldPlaceholder = ({ player }: { player: Player }) => <div>{player.name} Battlefield</div>;
-// const ActionButtonsPlaceholder = ({ game }: { game: Game }) => <div>Action Buttons</div>;
-
 function GameUI() {
   // State to hold the game instance
   const [game, setGame] = useState<Game | null>(null);
