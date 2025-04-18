@@ -450,33 +450,72 @@ export class Game {
           // Target the first card on the defender's current battlefield
           const defendingCard = defender.battlefield[0];
           const defendingCardIndex = 0; // Always target the first live card
-          const damage = currentAttackerCard.attack(defendingCard);
+          
+          // --- Simultaneous Damage Calculation ---
+          const attackerDamage = currentAttackerCard.attack(defendingCard);
+          const defenderDamage = defendingCard.attack(currentAttackerCard); // Defending card attacks back
 
           this.battleLog.push({ 
               type: 'attack', 
               ...attackEventBase,
-              defender: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defendingCardIndex } // Index 0 on real battlefield
+              defender: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defendingCardIndex }
           });
+
+          // Log attacker damage
           this.battleLog.push({ 
               type: 'damage', 
               attacker: attackEventBase.attacker,
               defender: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defendingCardIndex },
-              amount: damage, 
-              message: `${attacker.name}'s ${currentAttackerCard.getDisplayName()} damages ${defender.name}'s ${defendingCard.getDisplayName()} for ${damage}`
+              amount: attackerDamage, 
+              message: `${attacker.name}'s ${currentAttackerCard.getDisplayName()} damages ${defender.name}'s ${defendingCard.getDisplayName()} for ${attackerDamage}`
            });
 
-          defendingCard.health -= damage;
+          // Log defender damage
+          this.battleLog.push({ 
+              type: 'damage', 
+              // Swap attacker/defender for this log event
+              attacker: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defendingCardIndex }, 
+              defender: attackEventBase.attacker,
+              amount: defenderDamage, 
+              message: `${defender.name}'s ${defendingCard.getDisplayName()} damages ${attacker.name}'s ${currentAttackerCard.getDisplayName()} for ${defenderDamage}`
+           });
 
-          if (defendingCard.health <= 0) {
+          // --- Apply Damage ---
+          defendingCard.health -= attackerDamage;
+          currentAttackerCard.health -= defenderDamage; // Attacker takes damage
+
+          // --- Check for Defeat (after damage calculation) ---
+          const attackerDefeated = currentAttackerCard.health <= 0;
+          const defenderDefeated = defendingCard.health <= 0;
+
+          // Log and remove defeated defender first (to maintain consistency if both are defeated)
+          if (defenderDefeated) {
             console.log(`      -> ${defendingCard.getDisplayName()} defeated!`);
             this.battleLog.push({ 
                 type: 'defeat', 
-                attacker: attackEventBase.attacker,
+                attacker: attackEventBase.attacker, // Who caused the defeat
                 defender: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defendingCardIndex },
                 message: `${defender.name}'s ${defendingCard.getDisplayName()} is defeated!`
             });
+             // Important: Don't remove immediately, mark for removal or handle removal later
+             // For now, let's just remove from the defender's perspective
             defender.removeFromBattlefield(0); // Remove from the front
           }
+
+          // Log and remove defeated attacker (if not already removed by prior combat this turn)
+          // Find the attacker's *current* index on their *live* battlefield
+          const currentAttackerIndex = attacker.battlefield.findIndex(c => c === currentAttackerCard);
+          if (attackerDefeated && currentAttackerIndex !== -1) { // Check if still on battlefield
+              console.log(`      -> ${currentAttackerCard.getDisplayName()} defeated!`);
+              this.battleLog.push({ 
+                  type: 'defeat', 
+                  attacker: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defenderDefeated ? -1 : defendingCardIndex }, // Defending card caused the defeat (track if it was defeated too)
+                  defender: { playerIndex: attackerPlayerIndex, card: currentAttackerCard, cardIndex: currentAttackerIndex}, // The card that was defeated
+                  message: `${attacker.name}'s ${currentAttackerCard.getDisplayName()} is defeated!`
+              });
+              attacker.removeFromBattlefield(currentAttackerIndex); 
+          }
+          
         } else {
           // Target the player directly
           const damage = currentAttackerCard.strength;
