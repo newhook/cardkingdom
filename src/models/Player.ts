@@ -127,9 +127,29 @@ export class Player {
     const soldCard = this.battlefield.splice(index, 1)[0];
     if (soldCard) {
       this.pointsEarnedFromSales += 1; // Gain 1 point for next round
-      console.log(`${this.name} sold ${soldCard.getDisplayName()} from battlefield. Points for next round: ${this.pointsEarnedFromSales}`);
+      console.log(
+        `${
+          this.name
+        } sold ${soldCard.getDisplayName()} from battlefield. Points for next round: ${
+          this.pointsEarnedFromSales
+        }`
+      );
       return true;
     }
     return false;
+  }
+
+  clone(): Player {
+    const newPlayer = new Player(this.id, this.name);
+    newPlayer.maxHealth = this.maxHealth;
+    newPlayer.health = this.health;
+    newPlayer.draftPoints = this.draftPoints;
+    newPlayer.pointsEarnedFromSales = this.pointsEarnedFromSales;
+
+    // Deep copy cards in hand and battlefield
+    newPlayer.hand = this.hand.map((card) => card.clone());
+    newPlayer.battlefield = this.battlefield.map((card) => card.clone());
+
+    return newPlayer;
   }
 }

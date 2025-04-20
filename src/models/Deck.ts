@@ -3,13 +3,7 @@ import { Card, Suit, Rank } from "./Card";
 export class Deck {
   cards: Card[];
 
-  constructor(includeJokers: boolean = true) {
-    this.cards = [];
-    this.initialize(includeJokers);
-  }
-
-  // Initialize a new deck with all cards
-  private initialize(includeJokers: boolean): void {
+  constructor() {
     // Add all standard cards
     const suits = [Suit.HEARTS, Suit.DIAMONDS, Suit.CLUBS, Suit.SPADES];
     const ranks = [
@@ -29,17 +23,20 @@ export class Deck {
     ];
 
     // Create a card for each suit-rank combination
+    let id = 0;
+    this.cards = [];
     for (const suit of suits) {
       for (const rank of ranks) {
-        this.cards.push(new Card(suit, rank));
+        this.cards.push(new Card(id, suit, rank));
+        id++;
       }
     }
 
     // Add jokers if requested
-    if (includeJokers) {
-      this.cards.push(new Card(Suit.JOKER, Rank.JOKER));
-      this.cards.push(new Card(Suit.JOKER, Rank.JOKER));
-    }
+    this.cards.push(new Card(id, Suit.JOKER, Rank.JOKER));
+    id++;
+    this.cards.push(new Card(id, Suit.JOKER, Rank.JOKER));
+    id++;
   }
 
   // Shuffle the deck

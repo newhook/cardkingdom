@@ -27,25 +27,25 @@ export enum Rank {
 
 // Card class representing a playing card in the game
 export class Card {
+  public id: number;
   suit: Suit;
   rank: Rank;
   strength: number;
   health: number;
   maxHealth: number;
-  isJoker: boolean;
   cost: number;
   isDefeated: boolean;
 
-  constructor(suit: Suit, rank: Rank) {
+  constructor(id: number, suit: Suit, rank: Rank) {
+    this.id = id;
     this.suit = suit;
     this.rank = rank;
-    this.isJoker = rank === Rank.JOKER;
     this.cost = 2; // Every card costs 2 points regardless of type
     this.isDefeated = false;
 
     // Set initial health and strength based on rank
     let initialHealth: number;
-    if (this.isJoker) {
+    if (this.rank === Rank.JOKER) {
       this.strength = 11; // Jokers are powerful but versatile
       initialHealth = 11;
     } else if (this.isFaceCard()) {
@@ -167,4 +167,19 @@ export class Card {
     this.health = this.maxHealth;
     this.isDefeated = false;
   }
+
+  // --- ADD CLONE METHOD ---
+  clone(): Card {
+    // Create a new card with the same suit and rank
+    const newCard = new Card(this.id, this.suit, this.rank);
+    // Copy the current state
+    newCard.strength = this.strength;
+    newCard.health = this.health;
+    newCard.maxHealth = this.maxHealth;
+    newCard.cost = this.cost;
+    newCard.isDefeated = this.isDefeated;
+    // isJoker is handled by constructor based on rank
+    return newCard;
+  }
+  // --- END CLONE METHOD ---
 }
