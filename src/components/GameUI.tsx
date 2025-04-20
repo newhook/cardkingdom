@@ -13,7 +13,6 @@ import Battlefield from "./Battlefield";
 import DraftPool from "./DraftPool";
 import BattleLog from "./BattleLog";
 import PhaseBanner from "./PhaseBanner";
-import ActionButtons from "./ActionButtons";
 
 function GameUI() {
   // State to hold the game instance
@@ -162,7 +161,7 @@ function GameUI() {
           }
           // --- End call ---
 
-          // Note: Game state already moved to DAMAGE/GAMEOVER by executeBattle
+          // Note: Game state already moved to POST_BATTLE/GAMEOVER by executeBattle
           return;
         }
 
@@ -170,61 +169,72 @@ function GameUI() {
         console.log(`[GameUI] Animation Step ${step}:`, event);
 
         let nextAnimState: AnimationState | null = null;
+        const attackerPlayerIndex = game.players.findIndex(
+          (p) => p === event.attacker
+        );
+        const defenderPlayerIndex = game.players.findIndex(
+          (p) => p === event.defender
+        );
 
-        switch (event.type) {
-          case "attack":
-            const attackerCardIndex = game.players[
-              event.attacker!.playerIndex
-            ].battlefield.findIndex((c) => c === event.attacker!.card);
-            const defenderCardIndex = event.defender?.card
-              ? game.players[event.defender!.playerIndex].battlefield.findIndex(
-                  (c) => c === event.defender!.card
-                )
-              : null;
+        // --- Determine Animation Type based on BattleEvent properties ---
+        if (event.attackerCard !== null && event.defenderCard !== null) {
+          // This looks like an attack event
+          const attackerCard = event.attacker.battlefield[event.attackerCard];
+          const defenderCard = event.defender.battlefield[event.defenderCard];
 
-            // Ensure attacker card exists before setting attackerInfo
-            const validAttackerInfo =
-              event.attacker?.card && attackerCardIndex !== -1
-                ? {
-                    ...event.attacker,
-                    card: event.attacker.card,
-                    cardIndex: attackerCardIndex,
-                  }
-                : null;
-
+          if (attackerCard && defenderCard) {
             nextAnimState = {
-              attackerInfo: validAttackerInfo, // Use validated info
-              defenderInfo: event.defender
-                ? { ...event.defender, cardIndex: defenderCardIndex }
-                : { playerIndex: -1, cardIndex: null, card: null },
+              attackerInfo: {
+                playerIndex: attackerPlayerIndex,
+                cardIndex: event.attackerCard,
+                card: attackerCard,
+              },
+              defenderInfo: {
+                playerIndex: defenderPlayerIndex,
+                cardIndex: event.defenderCard,
+                card: defenderCard,
+              },
               damageAmount: null,
               isDefeat: false,
             };
-            break;
-          case "damage":
-          case "defeat":
-            // We mainly use the message from the log now, but could highlight defender
-            const currentDefenderCardIndex = event.defender?.card
-              ? game.players[event.defender!.playerIndex].battlefield.findIndex(
-                  (c) => c === event.defender!.card
-                )
-              : null;
+          } else {
+            console.warn(
+              "[GameUI] Attack animation step missing card data",
+              event
+            );
+          }
+        } else if (event.amount !== undefined && event.defenderCard !== null) {
+          // This looks like a damage or defeat event (has amount and defender card)
+          const defenderCard = event.defender.battlefield[event.defenderCard];
+          const isDefeat = defenderCard && defenderCard.health <= 0; // Check if the card is defeated
+
+          if (defenderCard) {
             nextAnimState = {
-              attackerInfo: null, // Or carry over from previous attack?
-              defenderInfo: event.defender
-                ? { ...event.defender, cardIndex: currentDefenderCardIndex }
-                : { playerIndex: -1, cardIndex: null, card: null }, // Provide default if null
-              damageAmount: event.amount ?? null,
-              isDefeat: event.type === "defeat",
+              attackerInfo: null, // No specific attacker highlighted for damage/defeat animation for now
+              defenderInfo: {
+                playerIndex: defenderPlayerIndex,
+                cardIndex: event.defenderCard,
+                card: defenderCard,
+              },
+              damageAmount: event.amount,
+              isDefeat: isDefeat,
             };
-            break;
-          // Ignore 'round' and 'info' for direct animation state for now
+          } else {
+            console.warn(
+              "[GameUI] Damage/Defeat animation step missing defender card data",
+              event
+            );
+          }
         }
+        // Add more conditions here if other event types need visual representation
 
         setAnimationState(nextAnimState);
 
         // --- Apply the actual state change for this event ---
-        if (game && (event.type === "damage" || event.type === "defeat")) {
+        // Apply damage/defeat state changes *after* setting the animation state
+        // for the previous step, so the UI reflects the state *before* this event occurs.
+        if (game && event.amount !== undefined) {
+          // Apply event logic (damage/defeat) after the animation step visualizes it
           game.applyBattleEvent(event);
           // Note: applyBattleEvent calls notifyUpdate() itself, triggering re-render
           // which will show the updated health/defeat status for the *next* step's pause.
@@ -499,7 +509,7 @@ function GameUI() {
             <BattleLog
               log={game
                 .getBattleLog()
-                .map((event) => event.message || `Event: ${event.type}`)}
+                .map((event) => event.message || `Battle Event`)} // Use message, provide fallback
             />
             {/* The existing central "Continue" button will dismiss this AND advance the game */}
           </div>

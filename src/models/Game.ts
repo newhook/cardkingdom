@@ -401,7 +401,7 @@ export class Game {
     const battleLog: BattleEvent[] = []; // Local log for this simulation
 
     // clone the players for the simulation
-    let players = this.players.map((p) => p.clone());
+    const players = this.players.map((p) => p.clone());
 
     const attack = (round: number, attacker: Player, defender: Player) => {
       if (round > attacker.battlefield.length - 1) {
@@ -412,8 +412,8 @@ export class Game {
       if (defender.battlefield.length == 0) {
         defender.takeDamage(attackerCard.strength);
         battleLog.push({
-          attacker: attacker,
-          defender: defender,
+          attacker: attacker.clone(),
+          defender: defender.clone(),
           attackerCard: attackerCardIndex,
           defenderCard: null,
           amount: attackerCard.strength,
@@ -428,8 +428,8 @@ export class Game {
 
       const damage = attackerCard.attack(defenderCard);
       battleLog.push({
-        attacker: attacker,
-        defender: defender,
+        attacker: attacker.clone(),
+        defender: defender.clone(),
         attackerCard: attackerCardIndex,
         defenderCard: defenderCardIndex,
         amount: damage,
@@ -437,8 +437,9 @@ export class Game {
           defender.name
         }'s ${defenderCard.getDisplayName()} for ${damage}`,
       });
-      defender.takeDamage(damage);
-      attacker.takeDamage(damage);
+      attackerCard.health -= damage;
+      defenderCard.health -= damage;
+
       if (defenderCard.health <= 0) {
         defender.battlefield.splice(defenderCardIndex, 1);
       }
@@ -452,111 +453,27 @@ export class Game {
     let round = 0;
     while (players.some((p) => round < p.battlefield.length)) {
       const defenderIndex = (attackerIndex + 1) % players.length;
-      const attacker = players[attackerIndex];
-      const defender = players[defenderIndex];
-      attack(round, attacker, defender);
-      attack(round, defender, attacker);
+      attack(round, players[attackerIndex], players[defenderIndex]);
+      attack(round, players[defenderIndex], players[attackerIndex]);
       round++;
-      players = players.map((p) => p.clone());
+      attackerIndex = (attackerIndex + 1) % players.length;
     }
     return battleLog;
   }
 
   // --- Method to apply a single battle event to the REAL game state ---
   applyBattleEvent(event: BattleEvent): void {
-    console.log(`[Game] Applying event:`, event);
-    switch (event.type) {
-      case "damage":
-        if (!event.defender || event.amount === undefined) break;
-
-        if (event.defender.card) {
-          // --- Apply damage to a REAL card ---
-          // Find the corresponding REAL card. This assumes cards are uniquely identifiable
-          // or relies on the playerIndex and cardIndex matching the original state.
-          // Let's assume playerIndex/cardIndex from the event are reliable for now.
-          const targetPlayer = this.players[event.defender.playerIndex];
-          // !! PROBLEM: cardIndex from event refers to the state *during simulation*.
-          // If cards were defeated earlier *in the simulation*, the real index might differ.
-          // SAFER APPROACH: Pass unique card identifiers (e.g., create IDs) or pass the
-          // original card object reference within the event data if feasible.
-          // TEMPORARY FIX: Let's assume the event contains the *original* card object reference or ID
-          // For now, let's try finding the card by reference/identity from the event log.
-          // This relies on the card objects in the log being the *cloned* ones.
-          // We need to find the *original* card that corresponds to the clone.
-          const targetCardClone = event.defender.card;
-          const realCard = targetPlayer.battlefield.find(
-            (c) =>
-              c.suit === targetCardClone.suit &&
-              c.rank === targetCardClone.rank &&
-              !c.isDefeated
-          );
-
-          if (realCard) {
-            console.log(
-              `   Applying ${event.amount} damage to ${
-                targetPlayer.name
-              }'s ${realCard.getDisplayName()} (Health: ${realCard.health})`
-            );
-            realCard.health -= event.amount;
-            console.log(`   New health: ${realCard.health}`);
-          } else {
-            console.warn(
-              `   Could not find real card for damage event:`,
-              event.defender
-            );
-          }
-        } else {
-          // --- Apply damage to a REAL player ---
-          const targetPlayer = this.players[event.defender.playerIndex];
-          console.log(
-            `   Applying ${event.amount} damage to ${targetPlayer.name} (Health: ${targetPlayer.health})`
-          );
-          targetPlayer.takeDamage(event.amount);
-          console.log(`   New health: ${targetPlayer.health}`);
-        }
-        break;
-
-      case "defeat":
-        if (!event.defender || !event.defender.card) break;
-        // --- Mark a REAL card as defeated ---
-        const defeatedPlayer = this.players[event.defender.playerIndex];
-        const defeatedCardClone = event.defender.card;
-        const realDefeatedCard = defeatedPlayer.battlefield.find(
-          (c) =>
-            c.suit === defeatedCardClone.suit &&
-            c.rank === defeatedCardClone.rank &&
-            !c.isDefeated
-        );
-
-        if (realDefeatedCard) {
-          console.log(
-            `   Marking ${
-              defeatedPlayer.name
-            }'s ${realDefeatedCard.getDisplayName()} as defeated.`
-          );
-          realDefeatedCard.isDefeated = true;
-          // --- Consider removing card immediately OR keep finishBattleAnimation cleanup? ---
-          // Let's keep cleanup in finishBattleAnimation for now to ensure fade-out completes.
-        } else {
-          console.warn(
-            `   Could not find real card for defeat event:`,
-            event.defender
-          );
-        }
-        break;
-
-      // Other event types ('attack', 'info', 'round') currently don't require state changes
-      case "attack":
-      case "info":
-      case "round":
-      default:
-        break; // No state change needed for these
+    for (let i = 0; i < this.players.length; i++) {
+      if (this.players[i].id === event.attacker.id) {
+        this.players[i] = event.attacker;
+      } else if (this.players[i].id === event.defender.id) {
+        this.players[i] = event.defender;
+      }
     }
 
     // Notify UI after applying the change for this step
     this.notifyUpdate();
   }
-  // --- END applyBattleEvent ---
 
   // Called by the UI after battle animations are complete
   finishBattleAnimation(): void {
@@ -579,26 +496,6 @@ export class Game {
   // Check if all players still have cards on battlefield
   allPlayersHaveCards(): boolean {
     return this.players.some((player) => player.battlefield.length > 0);
-  }
-
-  // Corrected applyDamageToPlayers
-  applyDamageToPlayers(damageTaken: Map<string, number>): void {
-    for (const [playerId, damage] of damageTaken.entries()) {
-      if (damage > 0) {
-        const player = this.players.find((p) => p.id === playerId);
-        if (player) {
-          const playerIndex = this.players.indexOf(player);
-          player.takeDamage(damage); // Apply damage first
-          // Log the event AFTER applying damage
-          this.battleLog.push({
-            type: "damage", // Changed type to 'damage' for consistency
-            defender: { playerIndex: playerIndex, card: null }, // Target is the player
-            amount: damage,
-            message: `${player.name} takes ${damage} damage.`,
-          });
-        }
-      }
-    }
   }
 
   // Check if the game is over
