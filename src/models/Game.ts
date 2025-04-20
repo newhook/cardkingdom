@@ -4,11 +4,11 @@ import { Player } from "./Player";
 
 export { Player, Card };
 
-// --- Shared Types ---
 export interface BattleEvent {
-  type: 'attack' | 'damage' | 'defeat' | 'info' | 'round';
-  attacker?: { playerIndex: number; card: Card | null; cardIndex?: number };
-  defender?: { playerIndex: number; card: Card | null; cardIndex?: number | null };
+  attacker: Player;
+  defender: Player;
+  attackerCard?: number | null;
+  defenderCard?: number | null;
   amount?: number;
   message?: string;
 }
@@ -16,11 +16,14 @@ export interface BattleEvent {
 // Define and export AnimationState structure here
 export interface AnimationState {
   attackerInfo: { playerIndex: number; cardIndex: number; card: Card } | null;
-  defenderInfo: { playerIndex: number; cardIndex: number | null; card: Card | null } | null; // Allow null defenderInfo
+  defenderInfo: {
+    playerIndex: number;
+    cardIndex: number | null;
+    card: Card | null;
+  } | null; // Allow null defenderInfo
   damageAmount: number | null;
   isDefeat: boolean;
 }
-// --- End Shared Types ---
 
 export enum GamePhase {
   SETUP = "setup",
@@ -49,7 +52,6 @@ export class Game {
   turnNumber: number;
   roundNumber: number;
   battleLog: BattleEvent[]; // Changed from string[]
-  currentDraftPoints: number;
   draftingOrder: number[]; // Track the order of players for drafting
   draftingPlayerIndex: number; // Index within draftingOrder array
   playersPassedDraftPhase: Set<number>; // Track who passed THIS phase
@@ -62,7 +64,7 @@ export class Game {
     this.players = playerNames.map(
       (name, index) => new Player(index.toString(), name)
     );
-    this.deck = new Deck(true); // Include jokers
+    this.deck = new Deck(); // Include jokers
     this.draftPool = [];
     this.currentPlayerIndex = 0; // Used for battle/arrangement phases
     this.draftingPlayerIndex = -1; // Actual player index (0 or 1)
@@ -72,7 +74,6 @@ export class Game {
     this.turnNumber = 1;
     this.roundNumber = 1;
     this.battleLog = []; // Initialize as empty array of BattleEvents
-    this.currentDraftPoints = 2; // Start with 2 drafting points on Turn 1
     this.playersPassedDraftPhase = new Set();
     this.isComputerDrafting = false;
     this.updateCallback = null;
@@ -99,9 +100,11 @@ export class Game {
 
     this.roundNumber = 1;
     this.playersPassedDraftPhase.clear();
-    this.players.forEach(player => {
+    this.players.forEach((player) => {
       player.draftPoints = 2; // Start with 2 points on Round 1
-      console.log(`Assigned ${player.draftPoints} draft points to ${player.name} for initial draft.`);
+      console.log(
+        `Assigned ${player.draftPoints} draft points to ${player.name} for initial draft.`
+      );
     });
 
     this.determineDraftingOrder(); // Sets draftingOrder
@@ -112,7 +115,11 @@ export class Game {
 
   // Check if it's the computer's turn to draft and trigger AI drafting
   checkAndTriggerComputerDraft(): void {
-    if (this.currentPhase !== GamePhase.DRAFT || this.draftingPlayerIndex === -1) return;
+    if (
+      this.currentPhase !== GamePhase.DRAFT ||
+      this.draftingPlayerIndex === -1
+    )
+      return;
     if (this.isComputerDrafting) return;
 
     const currentDraftingPlayer = this.players[this.draftingPlayerIndex];
@@ -136,7 +143,9 @@ export class Game {
     if (this.draftingPlayerIndex === -1) return; // Should not happen
     const computerPlayer = this.players[this.draftingPlayerIndex];
 
-    console.log(`${computerPlayer.name} (AI) drafting started. Points: ${computerPlayer.draftPoints}`);
+    console.log(
+      `${computerPlayer.name} (AI) drafting started. Points: ${computerPlayer.draftPoints}`
+    );
 
     let draftedThisTurn = false;
     // Continue drafting while AI has points and there are cards
@@ -148,7 +157,10 @@ export class Game {
       for (let i = 0; i < this.draftPool.length; i++) {
         const card = this.draftPool[i];
         // Basic check: can afford and is stronger than current best
-        if (card.cost <= computerPlayer.draftPoints && card.strength > bestCardStrength) {
+        if (
+          card.cost <= computerPlayer.draftPoints &&
+          card.strength > bestCardStrength
+        ) {
           bestCardStrength = card.strength;
           bestCardIndex = i;
         }
@@ -160,22 +172,26 @@ export class Game {
         );
         const success = this.draftCard(bestCardIndex); // Draft the card
         if (success) {
-           draftedThisTurn = true;
+          draftedThisTurn = true;
         } else {
-           console.error("AI draft failed unexpectedly.");
-           break; // Stop if drafting failed somehow
+          console.error("AI draft failed unexpectedly.");
+          break; // Stop if drafting failed somehow
         }
       } else {
         // No affordable card found or no card meets criteria
-        console.log(`${computerPlayer.name} (AI) found no suitable card to draft.`);
+        console.log(
+          `${computerPlayer.name} (AI) found no suitable card to draft.`
+        );
         break; // Stop drafting loop
       }
     }
 
-    // --- CHANGE: Instead of forcing a pass, just switch to the next eligible player --- 
+    // --- CHANGE: Instead of forcing a pass, just switch to the next eligible player ---
     // The AI might still have points but chose not to draft, or ran out.
     // Let switchToNextEligibleDrafter handle the turn logic correctly.
-    console.log(`${computerPlayer.name} (AI) finished drafting actions. Checking next player.`);
+    console.log(
+      `${computerPlayer.name} (AI) finished drafting actions. Checking next player.`
+    );
     // this.passDraft(); // REMOVED: Don't force pass here
     this.switchToNextEligibleDrafter(); // ADDED: Directly check for the next player
   }
@@ -212,69 +228,9 @@ export class Game {
     this.draftingPlayerIndex = 0;
   }
 
-  // Get the current player for drafting
-  getCurrentDraftingPlayer(): Player | null {
-    if (this.draftingPlayerIndex === -1 || this.currentPhase !== GamePhase.DRAFT) {
-        return null; // No one is drafting or not in draft phase
-    }
-    return this.players[this.draftingPlayerIndex];
-  }
-
   // Get the current player (used for battle/arrangement phases)
   getCurrentPlayer(): Player {
     return this.players[this.currentPlayerIndex];
-  }
-
-  // Get the current drafting points
-  getCurrentDraftPoints(): number {
-    return this.currentDraftPoints;
-  }
-
-  // Move to the next player in the drafting sequence and check for phase end
-  nextDraftingPlayer(): void {
-    this.draftingPlayerIndex++;
-
-    // --- Check if a full round of drafting completed --- 
-    if (this.draftingPlayerIndex >= this.draftingOrder.length) {
-      // --- Round finished. Check if ALL players passed this round --- 
-      if (this.passedPlayerIndices.size === this.players.length) {
-        // All players passed consecutively -> End Draft Phase
-        console.log(
-          "[Game.ts] All players passed consecutively. Setting phase to ARRANGEMENT."
-        );
-        this.currentPhase = GamePhase.ARRANGEMENT;
-        this.arrangeBattlefieldForComputer(); // Computer places its cards
-        this.passedPlayerIndices.clear(); // Clear pass status for the next phase
-        this.notifyUpdate();
-        return; // Exit here, phase changed.
-      } else {
-        // Round finished, but not everyone passed. Start a new turn.
-        this.turnNumber++;
-        this.draftingPlayerIndex = 0;
-        this.passedPlayerIndices.clear(); // Reset pass status for the new turn
-
-        // Determine new drafting order based on player health
-        this.determineDraftingOrder();
-
-        // Refill draft pool and set new draft points
-        this.refillDraftPool();
-        this.currentDraftPoints = 2 + (this.turnNumber - 1); // Points increase each turn
-
-        // Notify UI and check for computer turn
-        console.log(`[Game.ts] Starting Turn ${this.turnNumber}`);
-        this.notifyUpdate();
-        setTimeout(() => this.checkAndTriggerComputerDraft(), 500); // Check if AI drafts first
-        return; // Exit after starting new turn setup
-      }
-    }
-
-    // --- Round NOT complete, move to next player in the current turn --- 
-    console.log(
-      `[Game.ts] Moving to next drafter (index in order: ${this.draftingPlayerIndex})`
-    );
-    // Check if it's the computer's turn to draft for the next turn
-    this.notifyUpdate(); // Update UI for the next player's turn
-    setTimeout(() => this.checkAndTriggerComputerDraft(), 500);
   }
 
   // Arrange battlefield cards for computer player
@@ -302,11 +258,20 @@ export class Game {
 
   // Draft a card from the draft pool
   draftCard(poolIndex: number): boolean {
-    if (this.currentPhase !== GamePhase.DRAFT || this.draftingPlayerIndex === -1) return false;
+    if (
+      this.currentPhase !== GamePhase.DRAFT ||
+      this.draftingPlayerIndex === -1
+    )
+      return false;
 
     const currentDrafter = this.players[this.draftingPlayerIndex];
-    if (!currentDrafter || this.playersPassedDraftPhase.has(this.draftingPlayerIndex)) {
-      console.error("Attempted to draft for player who has passed or doesn't exist.");
+    if (
+      !currentDrafter ||
+      this.playersPassedDraftPhase.has(this.draftingPlayerIndex)
+    ) {
+      console.error(
+        "Attempted to draft for player who has passed or doesn't exist."
+      );
       return false; // Player already passed or is invalid
     }
 
@@ -316,18 +281,28 @@ export class Game {
     const cardCost = 2;
 
     if (cardCost > currentDrafter.draftPoints) {
-      console.log(`${currentDrafter.name} cannot afford card (Cost: ${cardCost}, Points: ${currentDrafter.draftPoints})`);
+      console.log(
+        `${currentDrafter.name} cannot afford card (Cost: ${cardCost}, Points: ${currentDrafter.draftPoints})`
+      );
       return false; // Not enough points
     }
 
     const draftedCard = this.draftPool.splice(poolIndex, 1)[0];
     currentDrafter.addCardToHand(draftedCard);
     currentDrafter.draftPoints -= cardCost;
-    console.log(`${currentDrafter.name} drafted ${draftedCard.getDisplayName()}. Points remaining: ${currentDrafter.draftPoints}`);
+    console.log(
+      `${
+        currentDrafter.name
+      } drafted ${draftedCard.getDisplayName()}. Points remaining: ${
+        currentDrafter.draftPoints
+      }`
+    );
 
     // If player runs out of points, automatically try to switch
     if (currentDrafter.draftPoints < cardCost) {
-      console.log(`${currentDrafter.name} has insufficient points for next draft.`);
+      console.log(
+        `${currentDrafter.name} has insufficient points for next draft.`
+      );
       this.switchToNextEligibleDrafter();
     } else {
       // Player still has points, update UI but stay on their turn
@@ -340,9 +315,16 @@ export class Game {
 
   // Pass the current draft turn
   passDraft(): void {
-    if (this.currentPhase === GamePhase.DRAFT && this.draftingPlayerIndex !== -1) {
-      if (!this.playersPassedDraftPhase.has(this.draftingPlayerIndex)){
-        console.log(`Player ${this.players[this.draftingPlayerIndex].name} (Index: ${this.draftingPlayerIndex}) passed the draft phase.`);
+    if (
+      this.currentPhase === GamePhase.DRAFT &&
+      this.draftingPlayerIndex !== -1
+    ) {
+      if (!this.playersPassedDraftPhase.has(this.draftingPlayerIndex)) {
+        console.log(
+          `Player ${this.players[this.draftingPlayerIndex].name} (Index: ${
+            this.draftingPlayerIndex
+          }) passed the draft phase.`
+        );
         this.playersPassedDraftPhase.add(this.draftingPlayerIndex);
       }
       this.switchToNextEligibleDrafter(); // Find next eligible player or end phase
@@ -351,15 +333,23 @@ export class Game {
 
   // New method to find the next player eligible to draft or end the phase
   switchToNextEligibleDrafter(): void {
-    if (this.currentPhase !== GamePhase.DRAFT || this.draftingOrder.length === 0) return;
+    if (
+      this.currentPhase !== GamePhase.DRAFT ||
+      this.draftingOrder.length === 0
+    )
+      return;
 
-    console.log("Switching to next eligible drafter based on order:", this.draftingOrder);
+    console.log(
+      "Switching to next eligible drafter based on order:",
+      this.draftingOrder
+    );
     const numPlayers = this.players.length;
 
     // Loop through the DRAFTING ORDER, starting from the next position
     for (let i = 0; i < numPlayers; i++) {
       // Calculate the next position in the draftingOrder array, wrapping around
-      this.draftingOrderPosition = (this.draftingOrderPosition + 1) % numPlayers;
+      this.draftingOrderPosition =
+        (this.draftingOrderPosition + 1) % numPlayers;
       const playerIndexToCheck = this.draftingOrder[this.draftingOrderPosition]; // Get player index from order
       const playerToCheck = this.players[playerIndexToCheck];
       const hasPassed = this.playersPassedDraftPhase.has(playerIndexToCheck);
@@ -371,7 +361,9 @@ export class Game {
 
       if (!hasPassed && hasPoints) {
         // Found the next eligible player
-        console.log(`Next drafter is ${playerToCheck.name} (Index: ${playerIndexToCheck})`);
+        console.log(
+          `Next drafter is ${playerToCheck.name} (Index: ${playerIndexToCheck})`
+        );
         this.draftingPlayerIndex = playerIndexToCheck; // Set the actual drafting player index
         this.notifyUpdate();
         setTimeout(() => this.checkAndTriggerComputerDraft(), 500);
@@ -380,7 +372,7 @@ export class Game {
       // If player not eligible, loop continues to check the next in draftingOrder
     }
 
-    // --- If loop completes, no eligible player was found in the order --- 
+    // --- If loop completes, no eligible player was found in the order ---
     console.log(
       "No eligible players remaining in drafting order. Ending Draft Phase."
     );
@@ -391,157 +383,128 @@ export class Game {
     this.notifyUpdate();
   }
 
-  // Check if draft phase should end (REMOVED - Logic moved to nextDraftingPlayer)
-  // shouldEndDraftPhase(): boolean {
-  //   return this.turnNumber > 3 || this.deck.isEmpty();
-  // }
-
   // Start the battle phase
   startBattle(): void {
     if (this.currentPhase !== GamePhase.ARRANGEMENT) return;
 
-    this.currentPhase = GamePhase.BATTLE;
-    this.battleLog = [];
+    // --- Simulate the battle to get the log ---
+    console.log("[Game] Simulating battle...");
+    this.battleLog = this.executeBattle(); // Get the log without changing state
 
-    // Execute battle logic
-    this.executeBattle();
+    // --- Set phase to BATTLE and notify UI ---
+    this.currentPhase = GamePhase.BATTLE;
+    console.log("[Game] Battle phase started. Log generated. Notifying UI.");
+    this.notifyUpdate(); // UI will now use the log to start animations
   }
 
-  // Corrected executeBattle for new rules (sequential attack per card)
-  executeBattle(): void {
-    this.battleLog = [];
-    const damageTaken = new Map<string, number>();
-    this.players.forEach(player => damageTaken.set(player.id, 0));
+  executeBattle(): BattleEvent[] {
+    const battleLog: BattleEvent[] = []; // Local log for this simulation
 
-    // Create initial snapshots of battlefields to determine attack order
-    const initialBattlefields = this.players.map(p => [...p.battlefield]);
-    console.log("Initial Battlefields:", initialBattlefields.map(bf => bf.map(c => c.getDisplayName())));
+    // clone the players for the simulation
+    const players = this.players.map((p) => p.clone());
 
-    this.battleLog.push({ type: 'info', message: `Battle Starts!` });
+    const attack = (round: number, attacker: Player, defender: Player) => {
+      if (round > attacker.battlefield.length - 1) {
+        return;
+      }
 
-    // Loop through each player (Player 0 then Player 1)
-    for (let attackerPlayerIndex = 0; attackerPlayerIndex < this.players.length; attackerPlayerIndex++) {
-      const defenderPlayerIndex = (attackerPlayerIndex + 1) % this.players.length;
-      const attacker = this.players[attackerPlayerIndex];
-      const defender = this.players[defenderPlayerIndex];
-      const initialAttackerBattlefield = initialBattlefields[attackerPlayerIndex];
+      const attackerCardIndex = round;
+      const attackerCard = attacker.battlefield[attackerCardIndex];
+      if (defender.battlefield.length == 0) {
+        battleLog.push({
+          attacker: attacker.clone(),
+          defender: defender.clone(),
+          attackerCard: attackerCardIndex,
+          defenderCard: null,
+          amount: attackerCard.strength,
+          message: `${attacker.name} attacks ${defender.name} directly for ${attackerCard.strength}`,
+        });
+        defender.takeDamage(attackerCard.strength);
+        return;
+      }
+      const defenderCardIndex = Math.floor(
+        Math.random() * defender.battlefield.length
+      );
+      const defenderCard = defender.battlefield[defenderCardIndex];
 
-      console.log(`-- ${attacker.name}'s Turn to Attack --`);
+      const damage = attackerCard.attack(defenderCard);
+      battleLog.push({
+        attacker: attacker.clone(),
+        defender: defender.clone(),
+        attackerCard: attackerCardIndex,
+        defenderCard: defenderCardIndex,
+        amount: damage,
+        message: `${attacker.name}'s ${attackerCard.getDisplayName()} damages ${
+          defender.name
+        }'s ${defenderCard.getDisplayName()} for ${damage}`,
+      });
 
-      // Loop through the attacker's *initial* battlefield sequence
-      for (let cardIndex = 0; cardIndex < initialAttackerBattlefield.length; cardIndex++) {
-        const initialAttackingCard = initialAttackerBattlefield[cardIndex];
+      attackerCard.health -= damage;
+      defenderCard.health -= damage;
 
-        // Find the current state of this attacking card on the *real* battlefield
-        // It might have been defeated before its turn!
-        const currentAttackerCard = attacker.battlefield.find(c => c === initialAttackingCard);
-        
-        if (!currentAttackerCard) {
-           console.log(`   ${initialAttackingCard.getDisplayName()} already defeated, skipping attack.`);
-           this.battleLog.push({ type: 'info', message: `${attacker.name}'s ${initialAttackingCard.getDisplayName()} was already defeated.` });
-           continue; // Skip attack if card is gone
-        }
+      if (defenderCard.health <= 0) {
+        defender.battlefield.splice(defenderCardIndex, 1);
+      }
+      if (attackerCard.health <= 0) {
+        attacker.battlefield.splice(attackerCardIndex, 1);
+      }
+      round++;
+    };
 
-        console.log(`   Attacking with: ${currentAttackerCard.getDisplayName()}`);
-        const attackEventBase = { attacker: { playerIndex: attackerPlayerIndex, card: currentAttackerCard, cardIndex } }; // cardIndex relates to initial position
+    let attackerIndex = Math.floor(Math.random() * this.players.length);
+    let round = 0;
+    while (players.some((p) => round < p.battlefield.length)) {
+      const defenderIndex = (attackerIndex + 1) % players.length;
+      attack(round, players[attackerIndex], players[defenderIndex]);
+      attack(round, players[defenderIndex], players[attackerIndex]);
+      round++;
+      attackerIndex = (attackerIndex + 1) % players.length;
+    }
+    battleLog.push({
+      attacker: players[0].clone(),
+      defender: players[1].clone(),
+    });
+    console.log(battleLog);
+    return battleLog;
+  }
 
-        // Check defender's *current* battlefield
-        if (defender.battlefield.length > 0) {
-          // Target the first card on the defender's current battlefield
-          const defendingCard = defender.battlefield[0];
-          const defendingCardIndex = 0; // Always target the first live card
-          const damage = currentAttackerCard.attack(defendingCard);
+  // --- Method to apply a single battle event to the REAL game state ---
+  applyBattleEvent(event: BattleEvent): void {
+    for (let i = 0; i < this.players.length; i++) {
+      if (this.players[i].id === event.attacker.id) {
+        this.players[i].health = event.attacker.health;
+        this.players[i].battlefield = event.attacker.battlefield;
+      } else if (this.players[i].id === event.defender.id) {
+        this.players[i].health = event.defender.health;
+        this.players[i].battlefield = event.defender.battlefield;
+      }
+    }
 
-          this.battleLog.push({ 
-              type: 'attack', 
-              ...attackEventBase,
-              defender: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defendingCardIndex } // Index 0 on real battlefield
-          });
-          this.battleLog.push({ 
-              type: 'damage', 
-              attacker: attackEventBase.attacker,
-              defender: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defendingCardIndex },
-              amount: damage, 
-              message: `${attacker.name}'s ${currentAttackerCard.getDisplayName()} damages ${defender.name}'s ${defendingCard.getDisplayName()} for ${damage}`
-           });
+    // Notify UI after applying the change for this step
+    this.notifyUpdate();
+  }
 
-          defendingCard.health -= damage;
-
-          if (defendingCard.health <= 0) {
-            console.log(`      -> ${defendingCard.getDisplayName()} defeated!`);
-            this.battleLog.push({ 
-                type: 'defeat', 
-                attacker: attackEventBase.attacker,
-                defender: { playerIndex: defenderPlayerIndex, card: defendingCard, cardIndex: defendingCardIndex },
-                message: `${defender.name}'s ${defendingCard.getDisplayName()} is defeated!`
-            });
-            defender.removeFromBattlefield(0); // Remove from the front
-          }
-        } else {
-          // Target the player directly
-          const damage = currentAttackerCard.strength;
-          damageTaken.set(defender.id, (damageTaken.get(defender.id) || 0) + damage);
-          console.log(`      -> Attacking ${defender.name} directly for ${damage}`);
-
-           this.battleLog.push({ 
-               type: 'attack',
-               ...attackEventBase,
-               defender: { playerIndex: defenderPlayerIndex, card: null, cardIndex: null } // Target player
-           });
-          this.battleLog.push({ 
-              type: 'damage',
-              attacker: attackEventBase.attacker,
-              defender: { playerIndex: defenderPlayerIndex, card: null, cardIndex: null },
-              amount: damage, 
-              message: `${attacker.name}'s ${currentAttackerCard.getDisplayName()} attacks ${defender.name} directly for ${damage}`
-           });
-        }
-        // Brief pause in log generation - UI animation handles visual delay
-      } // End loop through attacker's cards
-    } // End loop through players
-
-    // Apply cumulative direct player damage *after* all card attacks
-    this.applyDamageToPlayers(damageTaken);
-
-    // Battle phase logic is complete
-    console.log("--- Battle Sequence Finished ---");
-
+  // Called by the UI after battle animations are complete
+  finishBattleAnimation(): void {
+    console.log("[Game] Finishing battle animation, checking game state...");
     // Check for game over first
     if (this.checkGameOver()) {
-      console.log("Game Over detected.");
+      console.log("[Game] Game Over detected post-animation.");
       this.currentPhase = GamePhase.GAME_OVER;
     } else {
       // Transition to the post-battle pause phase
-      console.log("Battle finished, entering Post-Battle phase.");
+      console.log(
+        "[Game] Battle finished, entering Post-Battle phase post-animation."
+      );
       this.currentPhase = GamePhase.POST_BATTLE;
-      // prepareNextRound will be called by UI action later
     }
-    this.notifyUpdate(); // Update UI to show post-battle/game-over state
+    // Notify the UI of the phase change
+    this.notifyUpdate();
   }
 
   // Check if all players still have cards on battlefield
   allPlayersHaveCards(): boolean {
     return this.players.some((player) => player.battlefield.length > 0);
-  }
-
-  // Corrected applyDamageToPlayers 
-  applyDamageToPlayers(damageTaken: Map<string, number>): void {
-      for (const [playerId, damage] of damageTaken.entries()) {
-          if (damage > 0) {
-              const player = this.players.find(p => p.id === playerId);
-              if(player){
-                  const playerIndex = this.players.indexOf(player);
-                  player.takeDamage(damage); // Apply damage first
-                  // Log the event AFTER applying damage
-                  this.battleLog.push({ 
-                      type: 'damage', // Changed type to 'damage' for consistency
-                      defender: {playerIndex: playerIndex, card: null}, // Target is the player
-                      amount: damage,
-                      message: `${player.name} takes ${damage} damage.` 
-                  });
-              }
-          }
-      }
   }
 
   // Check if the game is over
@@ -584,15 +547,21 @@ export class Game {
 
     // Calculate base points for the round
     const basePointsToAssign = this.roundNumber + 1;
-    console.log(`Assigning points for Round ${this.roundNumber}: Base=${basePointsToAssign}`);
+    console.log(
+      `Assigning points for Round ${this.roundNumber}: Base=${basePointsToAssign}`
+    );
 
-    this.players.forEach(player => {
+    this.players.forEach((player) => {
       // Add points earned from sales last round
       const totalPoints = basePointsToAssign + player.pointsEarnedFromSales;
-      console.log(` - ${player.name} sales points: ${player.pointsEarnedFromSales}`);
+      console.log(
+        ` - ${player.name} sales points: ${player.pointsEarnedFromSales}`
+      );
       player.draftPoints = totalPoints;
       player.pointsEarnedFromSales = 0; // Reset sales points for the new round
-      console.log(` => Total assigned: ${player.draftPoints} to ${player.name}`);
+      console.log(
+        ` => Total assigned: ${player.draftPoints} to ${player.name}`
+      );
     });
 
     this.determineDraftingOrder();
@@ -605,5 +574,3 @@ export class Game {
     return this.battleLog;
   }
 }
-
-
