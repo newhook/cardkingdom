@@ -815,6 +815,22 @@ h1 {
   to { opacity: 0; transform: scale(0.8); }
 }
 
+/* New "Blow Up" Animation */
+@keyframes blowUp {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5) rotate(15deg); /* Expand and rotate */
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(0.5) rotate(-30deg); /* Shrink rapidly and fade */
+    opacity: 0;
+  }
+}
+
 /* Card Animations */
 .card.attacking {
   animation: attackMove 0.5s ease-in-out;
@@ -827,8 +843,9 @@ h1 {
   /* outline: 2px solid red; */ /* Optional outline for debugging */
 }
 
-.card.defeated-animation {
-  animation: defeatFadeOut 0.5s ease-in forwards; /* Keep final state */
+/* Apply defeat animation to the WRAPPER div */
+.battlefield-card-wrapper.defeated-animation {
+  animation: blowUp 0.6s ease-out forwards; /* Use the new animation */
   pointer-events: none; /* Prevent interaction after defeat animation */
 }
 

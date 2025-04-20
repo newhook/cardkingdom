@@ -150,96 +150,102 @@ function GameUI() {
       const stepDuration = 750; // ms between animation steps
 
       const processNextStep = () => {
-        if (step >= log.length) {
+        const event = log[step];
+        if (step == log.length - 1) {
           console.log("[GameUI] Battle animation finished.");
           isAnimatingRef.current = false; // Reset ref
           setAnimationState(null); // Clear animation state
+          game.applyBattleEvent(event);
 
-          // --- Call game logic to finalize the battle state ---
-          if (game) {
-            game.finishBattleAnimation(); // Signal game model to change phase
-          }
-          // --- End call ---
-
+          game.finishBattleAnimation(); // Signal game model to change phase
           // Note: Game state already moved to POST_BATTLE/GAMEOVER by executeBattle
           return;
         }
 
-        const event = log[step];
         console.log(`[GameUI] Animation Step ${step}:`, event);
 
         let nextAnimState: AnimationState | null = null;
+        // Find player indices by ID, not object reference
         const attackerPlayerIndex = game.players.findIndex(
-          (p) => p === event.attacker
+          (p) => p.id === event.attacker.id // Compare by ID
         );
         const defenderPlayerIndex = game.players.findIndex(
-          (p) => p === event.defender
+          (p) => p.id === event.defender.id // Compare by ID
         );
 
         // --- Determine Animation Type based on BattleEvent properties ---
-        if (event.attackerCard !== null && event.defenderCard !== null) {
-          // This looks like an attack event
-          const attackerCard = event.attacker.battlefield[event.attackerCard];
-          const defenderCard = event.defender.battlefield[event.defenderCard];
+        // Reset animation state for each step
+        nextAnimState = null;
 
-          if (attackerCard && defenderCard) {
-            nextAnimState = {
-              attackerInfo: {
-                playerIndex: attackerPlayerIndex,
-                cardIndex: event.attackerCard,
-                card: attackerCard,
-              },
-              defenderInfo: {
-                playerIndex: defenderPlayerIndex,
-                cardIndex: event.defenderCard,
-                card: defenderCard,
-              },
-              damageAmount: null,
-              isDefeat: false,
-            };
+        const attackerCardIndex = event.attackerCard;
+        const defenderCardIndex = event.defenderCard;
+        const damageAmount = event.amount;
+
+        if (attackerCardIndex !== null) {
+          // We have an attacker card
+          const attackerCard = event.attacker.battlefield[attackerCardIndex];
+          if (attackerCard) {
+            if (defenderCardIndex !== null) {
+              // Attacker Card vs Defender Card
+              const defenderCard =
+                event.defender.battlefield[defenderCardIndex];
+              if (defenderCard) {
+                const isDefeat = defenderCard.health <= damageAmount;
+                nextAnimState = {
+                  attackerInfo: {
+                    playerIndex: attackerPlayerIndex,
+                    cardIndex: attackerCardIndex, // Safe: checked !== null
+                    card: attackerCard,
+                  },
+                  defenderInfo: {
+                    playerIndex: defenderPlayerIndex,
+                    cardIndex: defenderCardIndex, // Safe: checked !== null
+                    card: defenderCard,
+                  },
+                  damageAmount: damageAmount,
+                  isDefeat: isDefeat,
+                };
+              } else {
+                console.warn(
+                  "[GameUI] Defender card data missing for attack",
+                  event
+                );
+              }
+            } else {
+              // Attacker Card vs Player Direct Attack
+              nextAnimState = {
+                attackerInfo: {
+                  playerIndex: attackerPlayerIndex,
+                  cardIndex: attackerCardIndex, // Safe: checked !== null
+                  card: attackerCard,
+                },
+                defenderInfo: {
+                  // Target is the player
+                  playerIndex: defenderPlayerIndex,
+                  cardIndex: null,
+                  card: null,
+                },
+                damageAmount: damageAmount,
+                isDefeat: false, // Player defeat is handled by game logic/phase change
+              };
+            }
           } else {
             console.warn(
-              "[GameUI] Attack animation step missing card data",
+              "[GameUI] Attacker card data missing for attack",
               event
             );
           }
-        } else if (event.amount !== undefined && event.defenderCard !== null) {
-          // This looks like a damage or defeat event (has amount and defender card)
-          const defenderCard = event.defender.battlefield[event.defenderCard];
-          const isDefeat = defenderCard && defenderCard.health <= 0; // Check if the card is defeated
-
-          if (defenderCard) {
-            nextAnimState = {
-              attackerInfo: null, // No specific attacker highlighted for damage/defeat animation for now
-              defenderInfo: {
-                playerIndex: defenderPlayerIndex,
-                cardIndex: event.defenderCard,
-                card: defenderCard,
-              },
-              damageAmount: event.amount,
-              isDefeat: isDefeat,
-            };
-          } else {
-            console.warn(
-              "[GameUI] Damage/Defeat animation step missing defender card data",
-              event
-            );
-          }
+        } else {
+          // Potentially other event types (e.g., effects) could be handled here
+          // For now, we assume if attackerCard is null, there's no primary animation needed
+          console.log(
+            "[GameUI] Skipping animation step, no attacker card index.",
+            event
+          );
         }
-        // Add more conditions here if other event types need visual representation
 
         setAnimationState(nextAnimState);
-
-        // --- Apply the actual state change for this event ---
-        // Apply damage/defeat state changes *after* setting the animation state
-        // for the previous step, so the UI reflects the state *before* this event occurs.
-        if (game && event.amount !== undefined) {
-          // Apply event logic (damage/defeat) after the animation step visualizes it
-          game.applyBattleEvent(event);
-          // Note: applyBattleEvent calls notifyUpdate() itself, triggering re-render
-          // which will show the updated health/defeat status for the *next* step's pause.
-        }
-        // --- End state application ---
+        game.applyBattleEvent(event);
 
         step++;
         animationTimeoutRef.current = window.setTimeout(
@@ -429,12 +435,14 @@ function GameUI() {
       />
       {/* Opponent Hand */}
       <PlayerHand {...opponentPlayerProps} />
-      {/* Opponent Battlefield - Pass dummy sell handler */}
-      <Battlefield
-        {...opponentPlayerProps}
-        animationState={animationState}
-        playerIndex={1}
-      />
+      {/* Opponent Battlefield - Needs Wrapper Div */}
+      <div className="battlefield-wrapper battlefield-player-1">
+        <Battlefield
+          {...opponentPlayerProps}
+          animationState={animationState}
+          playerIndex={1}
+        />
+      </div>
 
       {/* Divider / Ready Button Container */}
       <div
@@ -464,12 +472,14 @@ function GameUI() {
         )}
       </div>
 
-      {/* Player Battlefield - Pass real sell handler */}
-      <Battlefield
-        {...humanPlayerProps}
-        animationState={animationState}
-        playerIndex={0}
-      />
+      {/* Player Battlefield - Needs Wrapper Div */}
+      <div className="battlefield-wrapper battlefield-player-0">
+        <Battlefield
+          {...humanPlayerProps}
+          animationState={animationState}
+          playerIndex={0}
+        />
+      </div>
       {/* Player Hand */}
       <PlayerHand {...humanPlayerProps} />
       {/* Player Info */}

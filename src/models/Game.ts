@@ -7,8 +7,8 @@ export { Player, Card };
 export interface BattleEvent {
   attacker: Player;
   defender: Player;
-  attackerCard: number | null;
-  defenderCard: number | null;
+  attackerCard?: number | null;
+  defenderCard?: number | null;
   amount?: number;
   message?: string;
 }
@@ -407,10 +407,10 @@ export class Game {
       if (round > attacker.battlefield.length - 1) {
         return;
       }
+
       const attackerCardIndex = round;
       const attackerCard = attacker.battlefield[attackerCardIndex];
       if (defender.battlefield.length == 0) {
-        defender.takeDamage(attackerCard.strength);
         battleLog.push({
           attacker: attacker.clone(),
           defender: defender.clone(),
@@ -419,6 +419,7 @@ export class Game {
           amount: attackerCard.strength,
           message: `${attacker.name} attacks ${defender.name} directly for ${attackerCard.strength}`,
         });
+        defender.takeDamage(attackerCard.strength);
         return;
       }
       const defenderCardIndex = Math.floor(
@@ -437,6 +438,7 @@ export class Game {
           defender.name
         }'s ${defenderCard.getDisplayName()} for ${damage}`,
       });
+
       attackerCard.health -= damage;
       defenderCard.health -= damage;
 
@@ -458,6 +460,11 @@ export class Game {
       round++;
       attackerIndex = (attackerIndex + 1) % players.length;
     }
+    battleLog.push({
+      attacker: players[0].clone(),
+      defender: players[1].clone(),
+    });
+    console.log(battleLog);
     return battleLog;
   }
 
@@ -465,9 +472,11 @@ export class Game {
   applyBattleEvent(event: BattleEvent): void {
     for (let i = 0; i < this.players.length; i++) {
       if (this.players[i].id === event.attacker.id) {
-        this.players[i] = event.attacker;
+        this.players[i].health = event.attacker.health;
+        this.players[i].battlefield = event.attacker.battlefield;
       } else if (this.players[i].id === event.defender.id) {
-        this.players[i] = event.defender;
+        this.players[i].health = event.defender.health;
+        this.players[i].battlefield = event.defender.battlefield;
       }
     }
 
