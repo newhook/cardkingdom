@@ -19,7 +19,7 @@ function GameUI() {
   const [game, setGame] = useState<Game | null>(null);
   // State to force re-renders when the game state updates internally
   const [gameVersion, setGameVersion] = useState(0);
-  const [isDraftOverlayVisible, setIsDraftOverlayVisible] = useState(true); // State for overlay visibility
+  const [isDraftPoolVisible, setIsDraftPoolVisible] = useState(true); // NEW state for pool visibility
 
   // --- State for Phase Banner ---
   const [bannerPhase, setBannerPhase] = useState<GamePhase | null>(null);
@@ -52,7 +52,7 @@ function GameUI() {
     newGame.setUpdateCallback(forceUpdate);
     newGame.initialize();
     setGame(newGame);
-    setIsDraftOverlayVisible(true); // Ensure overlay is visible on new game/init
+    setIsDraftPoolVisible(true); // Ensure draft pool is visible on new game/init
   }, [forceUpdate]);
 
   useEffect(() => {
@@ -351,15 +351,16 @@ function GameUI() {
     initializeGame();
   }, [initializeGame]);
 
-  // --- Callbacks for Draft Overlay Toggle ---
-  const handleHideDraftOverlay = useCallback(() => {
-    setIsDraftOverlayVisible(false);
+  // --- Callbacks for Draft Pool Toggle ---
+  // Split toggle into separate show/hide handlers
+  const handleShowDraftPool = useCallback(() => {
+    setIsDraftPoolVisible(true);
   }, []);
 
-  const handleShowDraftOverlay = useCallback(() => {
-    setIsDraftOverlayVisible(true);
+  const handleHideDraftPool = useCallback(() => {
+    setIsDraftPoolVisible(false);
   }, []);
-  // --- End Draft Overlay Callbacks ---
+  // --- End Draft Pool Toggle Callbacks ---
 
   // --- Add Callback for Selling Card ---
   const handleSellCard = useCallback(
@@ -447,6 +448,7 @@ function GameUI() {
       {/* Divider / Ready Button Container */}
       <div
         className={`divider-container ${
+          (game.currentPhase === GamePhase.DRAFT && !isDraftPoolVisible) || // Show divider button area if draft is hidden
           game.currentPhase === GamePhase.ARRANGEMENT ||
           game.currentPhase === GamePhase.POST_BATTLE
             ? "has-button"
@@ -470,6 +472,14 @@ function GameUI() {
             Continue
           </button>
         )}
+        {game.currentPhase === GamePhase.DRAFT && !isDraftPoolVisible && (
+          <button
+            className="secondary-button show-draft-button"
+            onClick={handleShowDraftPool}
+          >
+            Show Draft
+          </button>
+        )}
       </div>
 
       {/* Player Battlefield - Needs Wrapper Div */}
@@ -491,14 +501,16 @@ function GameUI() {
         playerIndex={0}
       />
 
-      {/* Draft Pool Overlay */}
-      {game.currentPhase === GamePhase.DRAFT && isDraftOverlayVisible && (
-        <div className="draft-overlay">
+      {/* Draft Pool Overlay - Conditionally render the entire overlay div */}
+      {game.currentPhase === GamePhase.DRAFT && isDraftPoolVisible && (
+        <div className="draft-overlay visible">
+          {" "}
+          {/* Keep visible class when rendered */}
           <DraftPool
             game={game}
             onDraftCard={handleDraftCard}
             onPassDraft={handlePassDraft}
-            onHideOverlay={handleHideDraftOverlay}
+            onHideDraftPool={handleHideDraftPool}
           />
         </div>
       )}
@@ -507,21 +519,19 @@ function GameUI() {
       {showBattleLogOverlay && (
         <div className="battle-log-overlay">
           <div className="battle-log-overlay-content">
-            {/* ADDED: Close button for the overlay */}
             <button
               className="close-overlay-button"
               onClick={handleDismissBattleLog}
               aria-label="Close Battle Log"
             >
-              &times; {/* Creates a visual 'X' */}
+              &times;
             </button>
             <h2>Battle Results</h2>
             <BattleLog
               log={game
                 .getBattleLog()
-                .map((event) => event.message || `Battle Event`)} // Use message, provide fallback
+                .map((event) => event.message || `Battle Event`)}
             />
-            {/* The existing central "Continue" button will dismiss this AND advance the game */}
           </div>
         </div>
       )}

@@ -49,7 +49,6 @@ export class Game {
   draftPool: Card[];
   currentPlayerIndex: number;
   currentPhase: GamePhase;
-  turnNumber: number;
   roundNumber: number;
   battleLog: BattleEvent[]; // Changed from string[]
   draftingOrder: number[]; // Track the order of players for drafting
@@ -57,7 +56,6 @@ export class Game {
   playersPassedDraftPhase: Set<number>; // Track who passed THIS phase
   isComputerDrafting: boolean; // Flag to control AI drafting behavior
   updateCallback: GameUpdateCallback | null; // Callback to notify UI of updates
-  passedPlayerIndices: Set<number>; // Track players who passed in the current round
   draftingOrderPosition: number; // Index within draftingOrder array
 
   constructor(playerNames: string[] = ["Player 1", "Player 2"]) {
@@ -71,13 +69,11 @@ export class Game {
     this.draftingOrder = []; // Order of player indices
     this.draftingOrderPosition = -1; // Position in the order array
     this.currentPhase = GamePhase.SETUP;
-    this.turnNumber = 1;
     this.roundNumber = 1;
     this.battleLog = []; // Initialize as empty array of BattleEvents
     this.playersPassedDraftPhase = new Set();
     this.isComputerDrafting = false;
     this.updateCallback = null;
-    this.passedPlayerIndices = new Set(); // Initialize pass tracker
   }
 
   // Set a callback function that will be called when the game state changes
@@ -200,7 +196,7 @@ export class Game {
   private determineDraftingOrder(): void {
     this.draftingOrder = [];
 
-    if (this.turnNumber === 1) {
+    if (this.roundNumber === 1) {
       // For turn 1, randomly choose the first player
       const firstPlayerIndex = Math.floor(Math.random() * this.players.length);
 
@@ -540,7 +536,6 @@ export class Game {
   prepareNextRound(): void {
     console.log("--- Preparing Next Round --- ");
     this.roundNumber++;
-    this.turnNumber = 1;
     this.currentPhase = GamePhase.DRAFT;
     this.playersPassedDraftPhase.clear();
     this.battleLog = [];

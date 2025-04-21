@@ -1,15 +1,20 @@
-import React from 'react';
-import { Game, GamePhase } from '../models/Game';
-import CardComponent from './CardComponent';
+import React from "react";
+import { Game, GamePhase } from "../models/Game";
+import CardComponent from "./CardComponent";
 
 interface DraftPoolProps {
   game: Game;
   onDraftCard: (index: number) => void;
   onPassDraft: () => void;
-  onHideOverlay: () => void;
+  onHideDraftPool: () => void;
 }
 
-const DraftPool: React.FC<DraftPoolProps> = ({ game, onDraftCard, onPassDraft, onHideOverlay }) => {
+const DraftPool: React.FC<DraftPoolProps> = ({
+  game,
+  onDraftCard,
+  onPassDraft,
+  onHideDraftPool,
+}) => {
   const { draftPool, draftingPlayerIndex, playersPassedDraftPhase } = game;
 
   if (draftingPlayerIndex === -1) return null; // Should not happen if overlay is visible
@@ -29,24 +34,26 @@ const DraftPool: React.FC<DraftPoolProps> = ({ game, onDraftCard, onPassDraft, o
   const handlePassClick = () => {
     if (hasPassed) return; // Don't allow passing again if already passed
     onPassDraft();
-  }
+  };
 
   return (
-    <div className={`draft-pool ${hasPassed ? 'player-passed' : ''}`}>
+    <div className={`draft-pool ${hasPassed ? "player-passed" : ""}`}>
       <div className="draft-pool-header">
         <h3>Draft Pool</h3>
-        <button onClick={onHideOverlay} className="hide-button" title="Hide Draft Panel">×</button>
       </div>
 
       <div className="draft-points-info">
-        <strong>{currentDrafter.name}'s Turn</strong><br />
+        <strong>{currentDrafter.name}'s Turn</strong>
+        <br />
         Draft Points: {currentPoints}
-        {hasPassed && <span style={{color: 'red', marginLeft: '10px'}}>(Passed)</span>}
+        {hasPassed && (
+          <span style={{ color: "red", marginLeft: "10px" }}>(Passed)</span>
+        )}
       </div>
 
-      <button 
-        className="pass-button" 
-        onClick={handlePassClick} 
+      <button
+        className="pass-button"
+        onClick={handlePassClick}
         disabled={hasPassed}
       >
         Pass
@@ -62,15 +69,24 @@ const DraftPool: React.FC<DraftPoolProps> = ({ game, onDraftCard, onPassDraft, o
               card={card}
               isFaceUp={true}
               onClick={!isDisabled ? () => handleCardClick(index) : undefined}
-              className={isDisabled ? 'disabled' : ''}
+              className={isDisabled ? "disabled" : ""}
             >
               <div className="cost-badge">{card.cost}</div>
             </CardComponent>
           );
         })}
       </div>
+
+      <div className="draft-pool-footer">
+        <button
+          className="secondary-button hide-draft-button"
+          onClick={onHideDraftPool}
+        >
+          Hide Draft
+        </button>
+      </div>
     </div>
   );
 };
 
-export default DraftPool; 
+export default DraftPool;
