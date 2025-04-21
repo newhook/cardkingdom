@@ -856,3 +856,10 @@ h1 {
   border-color: red;
 }
 /* === End Battle Animation Styling === */
+
+/* Added to center the Hide Draft button in the draft pool footer */
+.draft-pool-footer {
+  display: flex;
+  justify-content: center;
+  padding: 10px; /* Optional: Add some spacing */
+} 
